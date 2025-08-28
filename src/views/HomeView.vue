@@ -1,35 +1,6 @@
 <template>
   <div class="hhh-page">
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
-      <div class="container-fluid px-5">
-        <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="#">
-          <img :src="logoUrl" alt="logo" height="32" />
-          <span class="brand-text">HomeHerHealth Hub</span>
-        </a>
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#nav"
-          aria-controls="nav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div id="nav" class="collapse navbar-collapse">
-          <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
-            <li class="nav-item"><a class="nav-link hhh-nav-link active" href="#">Home</a></li>
-            <li class="nav-item"><a class="nav-link hhh-nav-link" href="#">Resources</a></li>
-            <li class="nav-item"><a class="nav-link hhh-nav-link" href="#">Events</a></li>
-            <li class="nav-item"><a class="nav-link hhh-nav-link" href="#">Clinics Map</a></li>
-            <li class="nav-item"><a class="nav-link hhh-nav-link" href="#">Account</a></li>
-            <li class="nav-item"><a class="nav-link hhh-nav-link" href="#">Contact us</a></li>
-          </ul>
-        </div>
-      </div>
-    </nav>
+    
 
     <!-- Hero Banner -->
     <section
@@ -48,9 +19,9 @@
 
     <!-- Three major classifications -->
     <section class="py-5 bg-light">
-      <div class="container-fluid px-5">
-        <div class="row g-4">
-          <div class="col-12 col-md-4" v-for="c in categories" :key="c.title">
+      <div class="container-fluid px-3 px-md-5">
+        <div class="row g-3 g-md-4">
+          <div class="col-12 col-sm-6 col-lg-4" v-for="c in categories" :key="c.title">
             <div class="card h-100 shadow-sm border-0 hhh-feature text-center">
               <div class="card-body">
                 <div class="hhh-badge mx-auto mb-3" :style="{ background: c.badge }">
@@ -67,7 +38,7 @@
 
     <!-- Upcoming Events -->
     <section class="py-5">
-      <div class="container-fluid px-5">
+      <div class="container-fluid px-3 px-md-5">
         <div class="text-center mb-4">
           <h2 class="fw-bold hhh-section-title">Upcoming Events</h2>
           <p class="text-muted small">
@@ -75,8 +46,8 @@
           </p>
         </div>
 
-        <div class="row g-4">
-          <div class="col-12 col-md-4" v-for="e in events" :key="e.id">
+        <div class="row g-3 g-md-4">
+          <div class="col-12 col-sm-6 col-lg-4" v-for="e in events" :key="e.id">
             <div class="card h-100 shadow-sm border-0 hhh-event">
               <img class="card-img-top" :src="e.image" :alt="e.title" />
               <div class="card-body d-flex flex-column">
@@ -92,7 +63,7 @@
 
     <!-- Footer -->
     <footer class="hhh-footer hhh-bleed text-white py-5 mt-5">
-      <div class="container-fluid px-5">
+      <div class="container-fluid px-3 px-md-5">
         <div class="row g-4">
           <div class="col-12 col-md-6 col-lg-4">
             <h6 class="fw-semibold">About HomeHerHealth Hub</h6>
@@ -242,8 +213,8 @@ const events = ref([
 .hhh-event { border-radius: 16px; overflow: hidden; }
 .hhh-event img {
   width: 100%;
-  height: 500px;          
-  object-fit: cover;      
+  height: clamp(600px, 40vw, 600px);
+  object-fit: cover;
   display: block;
 }
 .hhh-event .card-body {
