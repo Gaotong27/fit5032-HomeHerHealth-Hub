@@ -154,9 +154,9 @@
 
             <!-- buttom -->
             <div class="actions">
-              <router-link class="btn btn-ghost" to="/login">Sign in instead</router-link>
+              <router-link class="btn btn-ghost" to="/login">Sign in</router-link>
               <button class="btn btn-primary" :disabled="submitting">
-                {{ submitting ? 'Creating…' : 'Next' }}
+                {{ submitting ? 'Creating…' : 'Comfirm' }}
               </button>
             </div>
           </form>

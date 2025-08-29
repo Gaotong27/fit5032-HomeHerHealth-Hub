@@ -1,4 +1,4 @@
-// 仅前端演示用（localStorage）
+// （localStorage）
 const LS_USERS = 'hhh.users';
 const LS_SESS  = 'hhh.session';
 
@@ -20,7 +20,7 @@ export const auth = {
   },
   isLoggedIn(){ return !!this.user },
 
-  // ⬇︎ 默认不自动登录；需要时传 { autoLogin:true }
+  // { autoLogin:true }
   async register({ email, password, name, gender='', age, reason, role='user' }, opts = { autoLogin:false }){
     const users = loadUsers();
     if (users.some(u => u.email.toLowerCase() === String(email).toLowerCase())){

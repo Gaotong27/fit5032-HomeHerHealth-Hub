@@ -56,8 +56,8 @@
 
             <!-- buttom -->
             <div class="actions">
-              <router-link class="btn btn-ghost" :to="{ name: 'register' }">Create account</router-link>
-              <button class="btn btn-primary" :disabled="submitting">
+              <router-link class="btn btn-ghost" :to="{ name: 'register' }">Create an account</router-link>
+              <button class="btn btn-primary" type="submit" :disabled="submitting">
                 {{ submitting ? 'Signing in…' : 'Sign in' }}
               </button>
             </div>
@@ -115,7 +115,7 @@ export default {
         const redirect = this.$route.query?.redirect
         if (redirect) return this.$router.replace(redirect)
         const role = auth.user?.role || 'user'
-        this.$router.replace(role === 'admin' ? '/admin' : '/user')
+        this.$router.replace({ name: 'profile' })
       } catch (e) {
         this.serverError = e?.message || 'Login failed'
         this.errors.password = this.serverError
