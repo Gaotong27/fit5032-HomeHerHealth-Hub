@@ -2,31 +2,38 @@
 <template>
   <section class="register-page">
     <div class="card">
+      <!-- Logo -->
+      <router-link class="logo" to="/" aria-label="Go home">
+        <img src="@/assets/logo.svg" alt="logo" />
+        <span class="brand">HomeHerHealth Hub</span>
+      </router-link>
+
 
       <div class="grid">
-        <!-- left -->
+        <!-- left title -->
         <div class="left">
           <h1 class="title">Create an Account</h1>
           <p class="subtitle">Enter your details</p>
         </div>
 
-        <!-- right -->
+        <!-- right form -->
         <div class="right">
-          <form @submit.prevent="submit">
+          <form @submit.prevent="onSubmit">
             <div class="form-grid">
-              <!-- Row 1: Email | Password -->
+              <!-- Row1：Email | Password -->
               <div class="field">
                 <label>Email</label>
                 <input
                   v-model.trim="form.email"
                   type="email"
                   placeholder="you@example.com"
-                  @blur="touch('email')"
-                  :class="{ invalid: touched.email && !rules.email(form.email) }"
-                  aria-invalid="touched.email && !rules.email(form.email)"
+                  @blur="() => validate('email', true)"
+                  @input="() => validate('email', false)"
+                  :class="{ invalid: touched.email && errors.email }"
+                  :aria-invalid="touched.email && !!errors.email"
                   required
                 />
-                <small v-if="touched.email && !rules.email(form.email)">Please enter a valid email.</small>
+                <small v-if="touched.email && errors.email">{{ errors.email }}</small>
               </div>
 
               <div class="field">
@@ -35,32 +42,32 @@
                   v-model="form.password"
                   type="password"
                   placeholder="Create a password"
-                  @blur="touch('password')"
-                  :class="{ invalid: touched.password && !rules.password(form.password) }"
-                  aria-invalid="touched.password && !rules.password(form.password)"
+                  @blur="() => validate('password', true)"
+                  @input="() => validate('password', false)"
+                  :class="{ invalid: touched.password && errors.password }"
+                  :aria-invalid="touched.password && !!errors.password"
                   required
                 />
-                <small v-if="touched.password && !rules.password(form.password)">
-                  At least 6 characters.
-                </small>
+                <small v-if="touched.password && errors.password">{{ errors.password }}</small>
               </div>
 
-              <!-- Row 2: Name -->
+              <!-- Row2：Name -->
               <div class="field span-2">
                 <label>Name</label>
                 <input
                   v-model.trim="form.name"
                   type="text"
                   placeholder="Your name"
-                  @blur="touch('name')"
-                  :class="{ invalid: touched.name && !rules.required(form.name) }"
-                  aria-invalid="touched.name && !rules.required(form.name)"
+                  @blur="() => validate('name', true)"
+                  @input="() => validate('name', false)"
+                  :class="{ invalid: touched.name && errors.name }"
+                  :aria-invalid="touched.name && !!errors.name"
                   required
                 />
-                <small v-if="touched.name && !rules.required(form.name)">Name is required.</small>
+                <small v-if="touched.name && errors.name">{{ errors.name }}</small>
               </div>
 
-              <!-- Row 3: Gender | Age -->
+              <!-- Row3：Gender | Age -->
               <div class="field">
                 <label>Gender <span class="muted">(optional)</span></label>
                 <select v-model="form.gender">
@@ -79,35 +86,33 @@
                   type="number"
                   min="10" max="120"
                   placeholder="e.g. 28"
-                  @blur="touch('age')"
-                  :class="{ invalid: touched.age && !rules.age(form.age) }"
-                  aria-invalid="touched.age && !rules.age(form.age)"
+                  @blur="() => validate('age', true)"
+                  @input="() => validate('age', false)"
+                  :class="{ invalid: touched.age && errors.age }"
+                  :aria-invalid="touched.age && !!errors.age"
                   required
                 />
-                <small v-if="touched.age && !rules.age(form.age)">
-                  Please enter a valid age (10–120).
-                </small>
+                <small v-if="touched.age && errors.age">{{ errors.age }}</small>
               </div>
 
-              <!-- Row 4: Reason to join  -->
+              <!-- Row4：Reason -->
               <div class="field span-2">
                 <label>Reason to join</label>
                 <textarea
                   v-model.trim="form.reason"
                   rows="4"
                   placeholder="Tell us briefly why you want to join"
-                  @blur="touch('reason')"
-                  :class="{ invalid: touched.reason && !rules.required(form.reason) }"
-                  aria-invalid="touched.reason && !rules.required(form.reason)"
+                  @blur="() => validate('reason', true)"
+                  @input="() => validate('reason', false)"
+                  :class="{ invalid: touched.reason && errors.reason }"
+                  :aria-invalid="touched.reason && !!errors.reason"
                   required
                 ></textarea>
-                <small v-if="touched.reason && !rules.required(form.reason)">
-                  This field is required.
-                </small>
+                <small v-if="touched.reason && errors.reason">{{ errors.reason }}</small>
               </div>
             </div>
 
-            <!-- button -->
+            <!-- buttom -->
             <div class="actions">
               <router-link class="btn btn-ghost" to="/login">Sign in instead</router-link>
               <button class="btn btn-primary" :disabled="submitting">
@@ -121,35 +126,78 @@
   </section>
 </template>
 
-<script setup>
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+<script>
+export default {
+  name: 'RegisterView',
+  data() {
+    return {
+      submitting: false,
+      form: {
+        email: '',
+        password: '',
+        name: '',
+        gender: '',
+        age: null,
+        reason: '',
+      },
+      touched: { email:false, password:false, name:false, age:false, reason:false },
+      errors:  { email:'',   password:'',   name:'',   age:'',   reason:'' }
+    }
+  },
+  methods: {
+    isRequired(v) { return !!v && String(v).trim().length > 0 },
+    isEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || '') },
+    isPassword(v) { return (v || '').length >= 6 },
+    isAge(v) { return Number.isFinite(+v) && +v >= 10 && +v <= 120 },
 
-const router = useRouter()
-const submitting = ref(false)
+    validate(key, fromBlur = false) {
+      if (fromBlur) this.touched[key] = true
 
-const form = reactive({
-  email: '', name: '', password: '', gender: '', age: null, reason: ''
-})
+      const v = this.form[key]
+      let msg = ''
 
-const touched = reactive({ email:false, password:false, name:false, age:false, reason:false })
+      switch (key) {
+        case 'email':
+          if (!this.isRequired(v)) msg = 'Email is required.'
+          else if (!this.isEmail(v)) msg = 'Please enter a valid email.'
+          break
+        case 'password':
+          if (!this.isRequired(v)) msg = 'Password is required.'
+          else if (!this.isPassword(v)) msg = 'At least 6 characters.'
+          break
+        case 'name':
+          if (!this.isRequired(v)) msg = 'Name is required.'
+          break
+        case 'age':
+          if (!this.isRequired(v)) msg = 'Age is required.'
+          else if (!this.isAge(v)) msg = 'Please enter a valid age (10–120).'
+          break
+        case 'reason':
+          if (!this.isRequired(v)) msg = 'This field is required.'
+          break
+      }
 
-const rules = {
-  required: v => !!v && String(v).trim().length > 0,
-  email: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || ''),
-  password: v => (v || '').length >= 6,
-  age: v => Number.isFinite(v) && v >= 10 && v <= 120,
+      this.errors[key] = msg
+      return !msg
+    },
+
+    validateAll(markTouched = false) {
+      if (markTouched) Object.keys(this.touched).forEach(k => this.touched[k] = true)
+      const keys = ['email','password','name','age','reason']
+      return keys.every(k => this.validate(k))
+    },
+
+    async onSubmit () {
+  if (!this.validateAll(true)) return
+  this.submitting = true
+  try {
+    this.$router.replace('/user')
+  } finally {
+    this.submitting = false 
+  }
 }
 
-function touch(k){ touched[k] = true }
-
-async function submit () {
-  Object.keys(touched).forEach(touch)
-  if (!rules.email(form.email) || !rules.password(form.password)
-      || !rules.required(form.name) || !rules.age(form.age)
-      || !rules.required(form.reason)) return
-
-  submitting.value = true
+  }
 }
 </script>
 
@@ -176,30 +224,17 @@ async function submit () {
   display:grid;
   grid-template-columns:1.1fr 1fr;
   gap:32px;
-  align-items: stretch;                 
+  align-items:stretch;                 
   min-height: clamp(520px, 70vh, 780px);
 }
-
-
 .left{
-  padding: 8px;                         
-  display:flex;
-  flex-direction: column;
-  justify-content: center;              
+  padding:8px;
+  display:flex; flex-direction:column; justify-content:center; 
 }
+.title{ font-weight:800; font-size:clamp(32px, 4vw, 56px); line-height:1.05; color:#202124; }
+.subtitle{ font-size:20px; color:#3c4043; margin:6px 0 0; }
 
-@media (max-width: 960px){
-  .grid{ grid-template-columns:1fr; min-height: unset; }
-  .left{ justify-content: flex-start; padding-top: 8px; }
-}
-.title{
-  font-weight: 800;            
-  font-size: clamp(32px, 4vw, 56px);
-  line-height: 1.05;
-  color: #202124;
-}
-
-
+.right{ padding:24px 8px; }
 
 
 .field{ display:flex; flex-direction:column; gap:8px; }
@@ -231,4 +266,9 @@ async function submit () {
 .btn-primary:hover{ background:#1666cc; }
 .btn-ghost{ background:#fff; color:#1a73e8; border:1px solid #dadce0; text-decoration:none; display:inline-flex; align-items:center; }
 .btn-ghost:hover{ background:#f8f9fa; }
+
+@media (max-width: 960px){
+  .grid{ grid-template-columns:1fr; min-height:unset; }
+  .left{ justify-content:flex-start; padding-top:8px; }
+}
 </style>
