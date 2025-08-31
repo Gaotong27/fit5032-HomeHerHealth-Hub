@@ -3,7 +3,7 @@
     <div class="card">
       <h1 class="title">Your profile</h1>
       <div class="row"><span class="label">Email</span><span>{{ user?.email }}</span></div>
-      <div class="row"><span class="label">Name</span><span>{{ user?.name }}</span></div>
+      <div class="row"><span class="label">Username</span><span>{{ user?.name }}</span></div>
       <div class="row"><span class="label">Gender</span><span>{{ user?.gender || '—' }}</span></div>
       <div class="row"><span class="label">Age</span><span>{{ user?.age ?? '—' }}</span></div>
       <div class="row"><span class="label">Reason</span><span>{{ user?.reason || '—' }}</span></div>

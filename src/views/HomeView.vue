@@ -84,7 +84,6 @@
               <li><a href="#" class="link-light text-decoration-none">HOME</a></li>
               <li><a href="#" class="link-light text-decoration-none">RESOURCES</a></li>
               <li><a href="#" class="link-light text-decoration-none">EVENTS</a></li>
-              <li><a href="#" class="link-light text-decoration-none">CONTACT US</a></li>
             </ul>
           </div>
           <div class="col-6 col-lg-4">

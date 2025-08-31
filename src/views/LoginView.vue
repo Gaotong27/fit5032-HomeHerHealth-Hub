@@ -111,11 +111,22 @@ export default {
       if (!this.validateAll(true)) return
       this.submitting = true
       try {
-        await auth.login({ email: this.form.email, password: this.form.password })
-        const redirect = this.$route.query?.redirect
-        if (redirect) return this.$router.replace(redirect)
-        const role = auth.user?.role || 'user'
-        this.$router.replace({ name: 'profile' })
+        const result = await auth.login({ email: this.form.email, password: this.form.password })
+
+        // === successful login，save user info to localStorage ===
+        const profile = {
+          uid: result.uid || Date.now(),
+          name: result.displayName || this.form.email.split('@')[0],
+          email: result.email || this.form.email
+        }
+        localStorage.setItem('hhh_user', JSON.stringify(profile))
+
+        // Notify App.vue to refresh the navigation bar
+        window.dispatchEvent(new Event('hhh:auth-updated'))
+
+        // Jump back to the homepage
+        this.$router.replace('/')
+
       } catch (e) {
         this.serverError = e?.message || 'Login failed'
         this.errors.password = this.serverError
