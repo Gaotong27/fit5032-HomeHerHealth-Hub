@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "slug": "healthy-living-workshops",
+    "title": "Healthy Living Workshops",
+    "summary": "Interactive sessions on nutrition, exercise, and mental wellbeing.",
+    "date": "2025-09-15",
+    "location": "Melbourne Community Center",
+    "image": "GeneralEvent1.png",
+    "content": "Join our interactive workshops covering nutrition basics, weekly exercise plans, and mindfulness practice. Suitable for all stages of life.",
+    "capacity": 30,
+    "registrations": 0
+  },
+  {
+    "id": 2,
+    "slug": "community-wellness-programs",
+    "title": "Community Wellness Programs",
+    "summary": "Programs to support physical, emotional and social wellbeing.",
+    "date": "2025-10-01",
+    "location": "Clayton Library Hall",
+    "image": "GeneralEvent2.png",
+    "content": "Tailored community programs including group walks, strength training, and peer support activities.",
+    "capacity": 30,
+    "registrations": 0
+  },
+  {
+    "id": 3,
+    "slug": "wellness-workshop-registration",
+    "title": "Wellness Workshop Registration",
+    "summary": "Register for upcoming workshops with practical tips for daily life.",
+    "date": "2025-10-20",
+    "location": "Caulfield Hub",
+    "image": "GeneralEvent3.png",
+    "content": "Hands-on sessions on sleep hygiene, stress reduction, and meal planning. Registration required.",
+    "capacity": 30,
+    "registrations": 0
+  }
+]

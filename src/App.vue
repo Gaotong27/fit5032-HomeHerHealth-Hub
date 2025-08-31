@@ -115,10 +115,11 @@ function logout() {
                 <li><hr class="dropdown-divider" /></li>
                 <li>
                   <RouterLink class="dropdown-item" to="/profile">
-                    <i class="bi bi-gear me-2"></i> Profile
+                    <i class="bi bi-gear me-2"></i> My Account
                   </RouterLink>
                 </li>
                 <li>
+                  
                   <RouterLink class="dropdown-item" to="/help">
                     <i class="bi bi-question-circle me-2"></i> Help
                   </RouterLink>
