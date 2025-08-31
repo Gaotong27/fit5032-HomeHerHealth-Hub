@@ -1,6 +1,8 @@
+// services/auth.js
 // （localStorage）
 const LS_USERS = 'hhh.users';
 const LS_SESS  = 'hhh.session';
+const LS_UIUSR = 'hhh_user';          
 
 function loadUsers(){ try{ return JSON.parse(localStorage.getItem(LS_USERS) || '[]') }catch{ return [] } }
 function saveUsers(u){ localStorage.setItem(LS_USERS, JSON.stringify(u)) }
@@ -8,6 +10,19 @@ function setSession(userId){ localStorage.setItem(LS_SESS, JSON.stringify({ user
 function getSession(){ try{ return JSON.parse(localStorage.getItem(LS_SESS) || 'null') }catch{ return null } }
 function clearSession(){ localStorage.removeItem(LS_SESS) }
 function sanitize(u){ if(!u) return null; const { password, ...rest } = u; return rest }
+
+
+function writeUiUser(u){
+  const profile = u ? {
+    uid: u.id,
+    name: u.name || (u.email?.split('@')[0] || 'User'),
+    email: u.email
+  } : null;
+  if (profile) localStorage.setItem(LS_UIUSR, JSON.stringify(profile));
+  else localStorage.removeItem(LS_UIUSR);
+
+  window.dispatchEvent(new Event('hhh:auth-updated'));
+}
 
 function randomSalt(len=16){ const a=new Uint8Array(len); crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('') }
 async function sha256(t){ const d=new TextEncoder().encode(t); const buf=await crypto.subtle.digest('SHA-256', d); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('') }
@@ -32,7 +47,11 @@ export const auth = {
     const user = { id, email, name, gender, age:Number(age), reason, role,
                    password:{ salt, hash }, createdAt:new Date().toISOString() };
     users.push(user); saveUsers(users);
-    if (opts?.autoLogin) setSession(id);
+
+    if (opts?.autoLogin) {
+      setSession(id);
+      writeUiUser(user);                 
+    }
     return sanitize(user);
   },
 
@@ -43,9 +62,14 @@ export const auth = {
     const hash = await sha256(u.password.salt + password);
     if (hash !== u.password.hash){ const e=new Error('Wrong password'); e.code='BAD_CREDENTIALS'; throw e }
     setSession(u.id);
+    writeUiUser(u);                       
     return sanitize(u);
   },
 
-  logout(){ clearSession() },
+  logout(){
+    clearSession();                        
+    writeUiUser(null);                    
+  },
+
   listUsers(){ return loadUsers().map(sanitize) },
 };

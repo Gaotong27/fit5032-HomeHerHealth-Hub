@@ -3,6 +3,7 @@
 import { RouterLink, RouterView } from 'vue-router'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { auth } from '@/services/auth'         
 
 const router = useRouter()
 const logoUrl = new URL('./assets/logo.svg', import.meta.url).href
@@ -17,11 +18,11 @@ function refreshUser() {
 
 onMounted(() => {
   refreshUser()
-  // Monitor localStorage changes
   window.addEventListener('storage', (e) => {
-    if (e.key === 'hhh_user') refreshUser()
+    if (e.key === 'hhh_user' || e.key === 'hhh.session') {
+      refreshUser()
+    }
   })
-  // Monitor custom events
   window.addEventListener('hhh:auth-updated', refreshUser)
 })
 
@@ -35,12 +36,11 @@ const userInitial = computed(() => {
 })
 
 function logout() {
-  localStorage.removeItem('hhh_user')
-  refreshUser()
-  router.replace('/')
+  auth.logout()
+  refreshUser()                              
+  router.replace({ name: 'account' })        
 }
 </script>
-
 
 <template>
   <div class="hhh-page">
@@ -79,10 +79,10 @@ function logout() {
               <RouterLink to="/clinics" class="nav-link hhh-nav-link">Clinics Map</RouterLink>
             </li>
 
-            <!-- not log in：show Sign in buttom -->
+            <!-- not logged in：show Sign in button -->
             <li v-if="!user" class="nav-item">
-              <RouterLink 
-                to="/account" 
+              <RouterLink
+                :to="{ name: 'account' }"
                 class="btn btn-primary rounded-pill px-3 py-1 d-flex align-items-center gap-2"
               >
                 <i class="bi bi-person"></i>
@@ -92,9 +92,9 @@ function logout() {
 
             <!-- logged in：Avatar + name -->
             <li v-else class="nav-item dropdown">
-              <button 
+              <button
                 class="btn btn-light rounded-pill px-2 d-flex align-items-center gap-2"
-                data-bs-toggle="dropdown" 
+                data-bs-toggle="dropdown"
                 aria-expanded="false"
               >
                 <span class="hhh-avatar">{{ userInitial }}</span>
@@ -114,12 +114,11 @@ function logout() {
                 </li>
                 <li><hr class="dropdown-divider" /></li>
                 <li>
-                  <RouterLink class="dropdown-item" to="/profile">
+                  <RouterLink class="dropdown-item" :to="{ name: 'profile' }">
                     <i class="bi bi-gear me-2"></i> My Account
                   </RouterLink>
                 </li>
                 <li>
-                  
                   <RouterLink class="dropdown-item" to="/help">
                     <i class="bi bi-question-circle me-2"></i> Help
                   </RouterLink>
@@ -138,7 +137,7 @@ function logout() {
     </nav>
 
     <main>
-      <RouterView />
+      <RouterView :key="$route.fullPath" />
     </main>
   </div>
 </template>
