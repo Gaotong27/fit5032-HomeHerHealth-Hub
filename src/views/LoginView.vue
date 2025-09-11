@@ -1,4 +1,3 @@
-<!-- src/views/LoginView.vue -->
 <template>
   <section class="login-page">
     <div class="card">
@@ -106,25 +105,31 @@ export default {
       return ['email','password'].every(k => this.validate(k))
     },
 
-    async onSubmit(){
+    async onSubmit () {
       this.serverError = ''
       if (!this.validateAll(true)) return
       this.submitting = true
+
       try {
-        const result = await auth.login({ email: this.form.email, password: this.form.password })
+        // ===== Hard login for administrators =====
+        if (this.form.email === 'admin@hhh.com' && this.form.password === 'admin123') {
+          const exists = (auth.listUsers?.() || []).some(u => u.email === 'admin@hhh.com')
+          if (!exists) {
+            await auth.register({
+              email: 'admin@hhh.com',
+              password: 'admin123',
+              name: 'Administrator',
+              role: 'admin'
+            }) 
+          }
 
-        // === successful login，save user info to localStorage ===
-        const profile = {
-          uid: result.uid || Date.now(),
-          name: result.displayName || this.form.email.split('@')[0],
-          email: result.email || this.form.email
+          await auth.login({ email: this.form.email, password: this.form.password })
+          this.$router.replace('/admin')
+          return
         }
-        localStorage.setItem('hhh_user', JSON.stringify(profile))
 
-        // Notify App.vue to refresh the navigation bar
-        window.dispatchEvent(new Event('hhh:auth-updated'))
-
-        // Jump back to the homepage
+        // ===== Users =====
+        await auth.login({ email: this.form.email, password: this.form.password })
         this.$router.replace('/')
 
       } catch (e) {

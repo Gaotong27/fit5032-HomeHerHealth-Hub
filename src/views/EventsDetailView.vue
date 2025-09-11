@@ -1,4 +1,3 @@
-<!-- src/views/EventDetailView.vue -->
 <template>
   <section class="event-detail-page">
     <div class="container py-5">
@@ -55,17 +54,133 @@
 
                 <!-- about -->
                 <h6 class="section-title">About this event</h6>
-                <p class="about mb-3">
-                  {{ specificDesc }}
-                </p>
+                <p class="about mb-3" v-html="safeAboutHtml"></p>
 
                 <!-- learn points -->
                 <ul class="learn-list">
                   <li v-for="(item, i) in learnPoints" :key="i">• {{ item }}</li>
                 </ul>
 
-                <!-- CTA -->
-                <div class="d-grid gap-2 mt-4">
+                <!-- ===== Ratings ===== -->
+                <div class="divider mt-3"></div>
+                <h6 class="section-title">Ratings</h6>
+
+                <!-- Not logged in: Only read the rating summary -->
+                <div v-if="!user" class="card p-3 mb-3">
+                  <div class="rating-summary">
+                    <div class="count">{{ formattedCount }}</div>
+                    <div class="score">{{ summary.count ? summary.avg.toFixed(1) : '—' }}</div>
+                    <div class="stars">
+                      <i v-for="(icon, i) in starIcons" :key="i" class="bi" :class="icon"></i>
+                    </div>
+                  </div>
+                </div>
+
+
+                <!-- Administrator: Read-only statistics + View list -->
+                <div v-else-if="user.role === 'admin'" class="card p-3 mb-3">
+                  <div class="d-flex align-items-center gap-3">
+                    <div>
+                      <div class="display-avg">{{ summary.avg.toFixed(1) }}</div>
+                      <div class="text-muted small">{{ summary.count }} ratings</div>
+                    </div>
+                    <ul class="mb-0 ms-3 small">
+                      <li v-for="n in 5" :key="'dist-admin-'+n">{{ 6 - n }}★ : {{ summary.dist[5 - n] }}</li>
+                    </ul>
+                    <button class="btn btn-outline-secondary btn-sm ms-auto"
+                            @click="() => { showRaters = !showRaters; if (showRaters) loadRatersList() }">
+                      {{ showRaters ? 'Hide raters' : 'View raters' }}
+                    </button>
+                  </div>
+
+                  <div v-if="showRaters" class="mt-3">
+                    <div class="table-responsive">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th style="width:28%">User</th>
+                            <th style="width:32%">Email</th>
+                            <th style="width:12%">Rating</th>
+                            <th style="width:28%">Updated</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-if="raterRows.length === 0">
+                            <td colspan="4" class="text-muted">No ratings yet.</td>
+                          </tr>
+                          <tr v-for="row in raterRows" :key="row.email">
+                            <td>{{ row.name }}</td>
+                            <td>{{ row.email }}</td>
+                            <td>{{ row.value }}★</td>
+                            <td>{{ new Date(row.updatedAt).toLocaleString() }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Users: can submit by star rating -->
+                <div v-else class="d-flex align-items-center gap-2 mb-2">
+                  <StarRating v-model="myRating" />
+                  <button class="btn btn-success btn-sm" :disabled="saving || !myRating" @click="saveRating">
+                    {{ saving ? 'Saving…' : (myRating ? 'Submit' : 'Select stars') }}
+                  </button>
+                  <span class="small text-muted ms-2">
+                    Avg {{ summary.avg.toFixed(2) }} ({{ summary.count }})
+                  </span>
+                </div>
+                <div v-if="flash" class="text-success small">Thanks for your feedback!</div>
+
+
+                <!-- ===== Registrations (Admin only, read-only) ===== -->
+                <div v-if="user && user.role === 'admin'" class="card p-3 mt-3 mb-2">
+                  <div class="d-flex align-items-center gap-3">
+                    <div>
+                      <div class="display-avg">{{ event.registrations }}</div>
+                      <div class="text-muted small">registrations</div>
+                    </div>
+                    <div class="ms-3 small">
+                      Capacity: <strong>{{ event.capacity }}</strong>
+                      <span class="text-muted ms-2">Remaining: {{ remaining }}</span>
+                    </div>
+
+                    <button
+                      class="btn btn-outline-secondary btn-sm ms-auto"
+                      @click="() => { showRegistrants = !showRegistrants; if (showRegistrants) loadRegistrantsList() }"
+                    >
+                      {{ showRegistrants ? 'Hide registrants' : 'View registrants' }}
+                    </button>
+                  </div>
+
+                  <!-- List Table (read-only) -->
+                  <div v-if="showRegistrants" class="mt-3">
+                    <div class="table-responsive">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th style="width:30%">User</th>
+                            <th style="width:70%">Email</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-if="registrantRows.length === 0">
+                            <td colspan="2" class="text-muted">No registrations yet.</td>
+                          </tr>
+                          <tr v-for="row in registrantRows" :key="row.email">
+                            <td>{{ row.name }}</td>
+                            <td>{{ row.email }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                <!-- ===== /Registrations ===== -->
+
+                <!-- CTA：Only displayed by not logged in or ordinary users -->
+                <div class="d-grid gap-2 mt-4" v-if="!user || user.role !== 'admin'">
+                  <!-- Not logged in: Log in -->
                   <router-link
                     v-if="!user"
                     class="btn btn-primary btn-lg"
@@ -74,6 +189,7 @@
                     Sign in to register
                   </router-link>
 
+                  <!-- User: Registration cancelled -->
                   <template v-else>
                     <button
                       v-if="!alreadyRegistered"
@@ -93,6 +209,7 @@
                     </button>
                   </template>
                 </div>
+                <!-- /CTA -->
               </div>
             </div>
           </div>
@@ -108,9 +225,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { sanitizeHtml } from '@/utils/sanitize'
 import { useRoute } from 'vue-router'
 import { getEventBySlug } from '@/services/events'
+import StarRating from '@/components/StarRating.vue'
+import { ratings } from '@/services/ratings'
 
 const route = useRoute()
 const event = ref(null)
@@ -118,14 +238,65 @@ const user = ref(null)
 const alreadyRegistered = ref(false)
 const registering = ref(false)
 
-/* ---------- utils: use email (lowercased) as unique key ---------- */
+/* ratings */
+const summary = ref({ avg: 0, count: 0, dist: [0,0,0,0,0] })
+const myRating = ref(0)
+const saving = ref(false)
+const flash = ref(false)
+const showRaters = ref(false)
+const raterRows = ref([])
+
+// The five stars corresponding to the average score (full, half and empty)
+const starIcons = computed(() => {
+  const a = Math.max(0, Math.min(5, Number(summary.value.avg || 0)));
+  const res = [];
+  for (let i = 1; i <= 5; i++) {
+    if (a >= i - 0.25) res.push('bi-star-fill');   
+    else if (a >= i - 0.75) res.push('bi-star-half'); 
+    else res.push('bi-star');                       
+  }
+  return res;
+});
+
+// “X ratings / No ratings yet” 
+const formattedCount = computed(() => {
+  const c = summary.value.count || 0;
+  return c ? `${c.toLocaleString()} ratings` : 'No ratings yet';
+});
+
+/* registrations (admin view only) */
+const showRegistrants = ref(false)
+const registrantRows = ref([])
+
+function loadRatersList() {
+  if (!event.value) return
+  const rows = ratings.list(event.value.id)
+  raterRows.value = rows.map(r => ({
+    email: r.userKey,
+    name: r.userKey.split('@')[0],
+    value: r.value,
+    updatedAt: r.updatedAt
+  }))
+}
+
+function loadRegistrantsList() {
+  if (!event.value) return
+  const emails = getRegistrations(event.value.id)
+  registrantRows.value = emails.map(em => ({
+    email: em,
+    name: em.split('@')[0]
+  }))
+}
+
+/* ---------- utils ---------- */
 function getImageUrl(fileName) {
   return new URL(`../assets/events/${fileName}`, import.meta.url).href
 }
 function getUserKey(u) {
   return u?.email ? String(u.email).trim().toLowerCase() : null
 }
-// read / save registrations for an event (array of emails)
+
+/* registrations in localStorage */
 function getRegistrations(eventId) {
   const data = JSON.parse(localStorage.getItem('hhh_registrations') || '{}')
   const list = data[eventId]
@@ -136,33 +307,46 @@ function saveRegistrations(eventId, list) {
   data[eventId] = list
   localStorage.setItem('hhh_registrations', JSON.stringify(data))
 }
-// dedupe old data and persist back
 function normalizeRegistrations(eventId) {
   const unique = Array.from(new Set(getRegistrations(eventId)))
   saveRegistrations(eventId, unique)
   return unique
 }
 
-/* ---------- load & state ---------- */
+/* ---------- load ---------- */
 async function load() {
-  // base event
   event.value = await getEventBySlug(route.params.slug)
 
-  // current user (ensure lowercased email)
   const raw = localStorage.getItem('hhh_user')
   user.value = raw ? JSON.parse(raw) : null
   if (user.value?.email) user.value.email = String(user.value.email).trim().toLowerCase()
 
-  // sync registrations from localStorage (deduped)
   if (event.value) {
     const unique = normalizeRegistrations(event.value.id)
     const key = getUserKey(user.value)
     event.value.registrations = unique.length
     alreadyRegistered.value = !!(key && unique.includes(key))
   }
+
+  loadRatings()
+
+  if (user.value?.role === 'admin') loadRegistrantsList()
 }
+
+function loadRatings() {
+  if (!event.value) return
+  summary.value = ratings.getSummary(event.value.id)
+  const key = getUserKey(user.value)
+  myRating.value = key ? ratings.getUserRating(event.value.id, key) : 0
+  if (user.value?.role === 'admin') loadRatersList()
+}
+
 onMounted(load)
 watch(() => route.params.slug, load)
+watch([() => event.value?.id, () => user.value?.email], loadRatings)
+watch([() => event.value?.id, () => user.value?.role], () => {
+  if (user.value?.role === 'admin') loadRegistrantsList()
+})
 
 /* ---------- derived ---------- */
 const status = computed(() => {
@@ -185,6 +369,7 @@ const specificDesc = computed(() =>
     ? `${event.value.content} This session includes guided activities and take-home resources to help you put ideas into practice immediately.`
     : 'This session provides practical guidance with hands-on activities and take-home resources.'
 )
+const safeAboutHtml = computed(() => sanitizeHtml(specificDesc.value))
 const learnPoints = computed(() => [
   'Nutrition basics with a 7-day meal template',
   'Beginner-friendly 30–40 min exercise routine',
@@ -192,9 +377,11 @@ const learnPoints = computed(() => [
   'Q&A with facilitator and take-home checklist'
 ])
 
-/* ---------- actions: email-based register / cancel ---------- */
+/* ---------- actions: register / cancel ---------- */
 function register() {
   if (!event.value || !user.value || status.value !== 'open' || registering.value) return
+  if (user.value?.role === 'admin') return   
+
   registering.value = true
 
   const key = getUserKey(user.value)
@@ -224,9 +411,29 @@ function cancelOnDetail() {
   const next = list.filter(e => e !== key)
   saveRegistrations(event.value.id, next)
 
-  // update UI
   event.value.registrations = next.length
   alreadyRegistered.value = false
+}
+
+/* ---------- actions: ratings ---------- */
+function saveRating() {
+  if (!event.value || !user.value) return
+  if (user.value.role === 'admin') return 
+  const key = getUserKey(user.value)
+  if (!key || !myRating.value) return
+  saving.value = true
+  summary.value = ratings.set(event.value.id, key, myRating.value)
+  saving.value = false
+  flash.value = true
+  setTimeout(() => (flash.value = false), 1200)
+}
+
+function resetRatings() {
+  if (user.value?.role !== 'admin') return
+  if (!confirm('Reset all ratings for this event?')) return
+  summary.value = ratings.clearEvent(event.value.id)
+  myRating.value = 0
+  loadRatersList()
 }
 </script>
 
@@ -295,14 +502,39 @@ function cancelOnDetail() {
 .learn-list{ list-style:none; padding:0; margin:0; }
 .learn-list li{ color:#5f6368; margin-bottom:6px; }
 
-/* note area inside the big card */
-.detail-note{
-  margin-top:16px;
-  background:#f7f9fc;
-  border:1px solid #e7eaee;
-  border-radius:14px;
-  padding:10px 14px;
+.display-avg { font-size: 32px; font-weight: 800; line-height: 1; }
+.alert { border-radius: 14px; }
+
+.rating-summary{
+  text-align:center;
+  display:flex;                
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
 }
+.rating-summary .count{
+  font-size:12px;
+  color:#6b7280;
+  font-weight:700;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+}
+.rating-summary .score{
+  font-size:42px;
+  font-weight:800;
+  line-height:1.1;
+  margin:4px 0 6px;
+}
+
+.rating-summary .stars{ margin-top:2px; }
+.rating-summary .stars .bi{ font-size:20px; margin:0 2px; }
+.rating-summary .stars .bi-star-fill,
+.rating-summary .stars .bi-star-half{ color:#f5b301; }   
+.rating-summary .stars .bi-star{ color:#d1d5db; }        
+
+.rating-summary.compact .score{ font-size:28px; }
+.rating-summary.compact .stars .bi{ font-size:18px; }
+
 
 .btn{ border-radius:20px; font-weight:700; padding:12px 18px; }
 .btn-danger{ background:#d93025; color:#fff; border:0; }

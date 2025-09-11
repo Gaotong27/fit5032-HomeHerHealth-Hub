@@ -53,6 +53,4 @@ const paged = computed(() => {
   const start = (page.value - 1) * pageSize
   return filtered.value.slice(start, start + pageSize)
 })
-
-
 </script>

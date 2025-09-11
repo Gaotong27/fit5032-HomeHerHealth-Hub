@@ -1,4 +1,3 @@
-<!-- src/views/AccountView.vue -->
 <template>
   <section class="account-landing">
     <div class="card-wrap">

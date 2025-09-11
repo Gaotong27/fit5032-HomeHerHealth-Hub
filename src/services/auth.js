@@ -1,5 +1,3 @@
-// services/auth.js
-// （localStorage）
 const LS_USERS = 'hhh.users';
 const LS_SESS  = 'hhh.session';
 const LS_UIUSR = 'hhh_user';          
@@ -16,7 +14,8 @@ function writeUiUser(u){
   const profile = u ? {
     uid: u.id,
     name: u.name || (u.email?.split('@')[0] || 'User'),
-    email: u.email
+    email: u.email,
+    role: u.role || 'user'     
   } : null;
   if (profile) localStorage.setItem(LS_UIUSR, JSON.stringify(profile));
   else localStorage.removeItem(LS_UIUSR);
@@ -35,7 +34,6 @@ export const auth = {
   },
   isLoggedIn(){ return !!this.user },
 
-  // { autoLogin:true }
   async register({ email, password, name, gender='', age, reason, role='user' }, opts = { autoLogin:false }){
     const users = loadUsers();
     if (users.some(u => u.email.toLowerCase() === String(email).toLowerCase())){
