@@ -82,6 +82,7 @@
                   v-model.trim="form.name"
                   type="text"
                   placeholder="Your name"
+                  maxlength="20"
                   @blur="() => validate('name', true)"
                   @input="() => validate('name', false)"
                   :class="{ invalid: touched.name && errors.name }"
@@ -238,11 +239,21 @@ export default {
           else if (!this.isSame(this.form.password, v)) msg = 'Passwords do not match.'
           break
         }
-        case 'name':
-          if(!this.isRequired(v)) msg='Name is required.'; break;
+        case 'name': {
+          const s = String(v ?? '').trim();
+          const len = s.length;
+          if (!len) {
+            msg = 'Name is required.';
+          } else if (len > 20) {
+            msg = 'Up to 20 characters.';
+          } else {
+            msg = '';
+          }
+          break;
+        }
         case 'age':
           if(!this.isRequired(v)) msg='Age is required.';
-          else if(!this.isAge(v)) msg='Please enter a valid age (10–120).'; break;
+          else if(!this.isAge(v)) msg='Please enter a valif da s fd age (10–120).'; break;
         case 'reason': {
           const len = (v || '').trim().length
           if (!len) msg = 'This field is required.'
