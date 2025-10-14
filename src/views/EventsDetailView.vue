@@ -3,26 +3,32 @@
     <div class="container py-5">
       <router-link class="link-back" :to="{ name: 'events' }">← Back to Events</router-link>
 
-      <!-- unified big card -->
       <div class="detail-card shadow-lg" v-if="event">
-        <!-- title -->
         <h1 class="title">{{ event.title }}</h1>
 
         <div class="row g-4">
-          <!-- left: cover -->
+          <!-- 左侧封面列 -->
           <div class="col-lg-7">
             <img
-              :src="getImageUrl(event.image)"
+              :src="event.imageUrl || getImageUrl(event.image)"
               :alt="event.title"
               class="hero-img rounded-3 shadow-sm"
             />
+
+            <!-- 管理员导出报名名单 -->
+            <div v-if="user && user.role === 'admin'" class="admin-export">
+              <button class="btn btn-outline-dark btn-sm" @click="exportRegistrations" title="Export attendees (CSV)">
+                <i class="bi bi-download me-1"></i> Export attendees (CSV)
+              </button>
+            </div>
           </div>
 
-          <!-- right: info panel -->
+          <!-- 右侧信息列 -->
           <div class="col-lg-5">
             <div class="panel card shadow-sm">
-              <div class="card-body">
-                <!-- status + capacity -->
+                <div class="card-body">
+
+                <!-- 状态 -->
                 <div class="d-flex align-items-center justify-content-between mb-3">
                   <span class="badge rounded-pill"
                     :class="{
@@ -37,186 +43,106 @@
 
                 <div class="divider"></div>
 
-                <!-- key info -->
+                <!-- 基本信息 -->
                 <ul class="list-unstyled mb-3 key-info">
-                  <li class="mb-2">
-                    <span class="key">Date:</span><span class="val">{{ event.date }}</span>
-                  </li>
-                  <li class="mb-2">
-                    <span class="key">Location:</span><span class="val">{{ event.location }}</span>
-                  </li>
-                  <li class="mb-2">
-                    <span class="key">Remaining:</span><span class="val">{{ remaining }}</span>
-                  </li>
+                  <li class="mb-2"><span class="key">Date: </span><span class="val">{{ event.date }}</span></li>
+                  <li class="mb-2"><span class="key">Location: </span><span class="val">{{ event.location }}</span></li>
                 </ul>
 
                 <div class="divider"></div>
 
-                <!-- about -->
+                <!-- 介绍 -->
                 <h6 class="section-title">About this event</h6>
                 <p class="about mb-3" v-html="safeAboutHtml"></p>
-
-                <!-- learn points -->
-                <ul class="learn-list">
-                  <li v-for="(item, i) in learnPoints" :key="i">• {{ item }}</li>
-                </ul>
-
-                <!-- ===== Ratings ===== -->
-                <div class="divider mt-3"></div>
-                <h6 class="section-title">Ratings</h6>
-
-                <!-- Not logged in: Only read the rating summary -->
-                <div v-if="!user" class="card p-3 mb-3">
-                  <div class="rating-summary">
-                    <div class="count">{{ formattedCount }}</div>
-                    <div class="score">{{ summary.count ? summary.avg.toFixed(1) : '—' }}</div>
-                    <div class="stars">
-                      <i v-for="(icon, i) in starIcons" :key="i" class="bi" :class="icon"></i>
-                    </div>
-                  </div>
+                <!-- 通用活动说明 -->
+                <div class="generic-tip mt-2">
+                  <i class="bi bi-info-circle me-1"></i>
+                  This program opens <strong>periodically</strong>. Seats may be released in batches.
+                  If it’s full, please check back later or watch for the next window.
+    
                 </div>
 
-
-                <!-- Administrator: Read-only statistics + View list -->
-                <div v-else-if="user.role === 'admin'" class="card p-3 mb-3">
-                  <div class="d-flex align-items-center gap-3">
-                    <div>
-                      <div class="display-avg">{{ summary.avg.toFixed(1) }}</div>
-                      <div class="text-muted small">{{ summary.count }} ratings</div>
-                    </div>
-                    <ul class="mb-0 ms-3 small">
-                      <li v-for="n in 5" :key="'dist-admin-'+n">{{ 6 - n }}★ : {{ summary.dist[5 - n] }}</li>
-                    </ul>
-                    <button class="btn btn-outline-secondary btn-sm ms-auto"
-                            @click="() => { showRaters = !showRaters; if (showRaters) loadRatersList() }">
-                      {{ showRaters ? 'Hide raters' : 'View raters' }}
-                    </button>
-                  </div>
-
-                  <div v-if="showRaters" class="mt-3">
-                    <div class="table-responsive">
-                      <table class="table table-sm align-middle mb-0">
-                        <thead>
-                          <tr>
-                            <th style="width:28%">User</th>
-                            <th style="width:32%">Email</th>
-                            <th style="width:12%">Rating</th>
-                            <th style="width:28%">Updated</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr v-if="raterRows.length === 0">
-                            <td colspan="4" class="text-muted">No ratings yet.</td>
-                          </tr>
-                          <tr v-for="row in raterRows" :key="row.email">
-                            <td>{{ row.name }}</td>
-                            <td>{{ row.email }}</td>
-                            <td>{{ row.value }}★</td>
-                            <td>{{ new Date(row.updatedAt).toLocaleString() }}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Users: can submit by star rating -->
-                <div v-else class="d-flex align-items-center gap-2 mb-2">
-                  <StarRating v-model="myRating" />
-                  <button class="btn btn-success btn-sm" :disabled="saving || !myRating" @click="saveRating">
-                    {{ saving ? 'Saving…' : (myRating ? 'Submit' : 'Select stars') }}
+                <!-- ✅ 注册按钮移到 About 后 -->
+                <div v-if="user && user.role !== 'admin'" class="mb-3">
+                  <button v-if="!alreadyRegistered"
+                    class="btn btn-success w-100"
+                    :disabled="status!=='open' || registering"
+                    @click="register">
+                    {{ registering ? 'Registering…' : 'Register now' }}
                   </button>
-                  <span class="small text-muted ms-2">
-                    Avg {{ summary.avg.toFixed(2) }} ({{ summary.count }})
-                  </span>
+                  <button v-else class="btn btn-danger w-100" @click="cancelOnDetail">
+                    Cancel registration
+                  </button>
                 </div>
-                <div v-if="flash" class="text-success small">Thanks for your feedback!</div>
 
-
-                <!-- ===== Registrations (Admin only, read-only) ===== -->
-                <div v-if="user && user.role === 'admin'" class="card p-3 mt-3 mb-2">
-                  <div class="d-flex align-items-center gap-3">
-                    <div>
-                      <div class="display-avg">{{ event.registrations }}</div>
-                      <div class="text-muted small">registrations</div>
-                    </div>
-                    <div class="ms-3 small">
-                      Capacity: <strong>{{ event.capacity }}</strong>
-                      <span class="text-muted ms-2">Remaining: {{ remaining }}</span>
-                    </div>
-
-                    <button
-                      class="btn btn-outline-secondary btn-sm ms-auto"
-                      @click="() => { showRegistrants = !showRegistrants; if (showRegistrants) loadRegistrantsList() }"
-                    >
-                      {{ showRegistrants ? 'Hide registrants' : 'View registrants' }}
-                    </button>
-                  </div>
-
-                  <!-- List Table (read-only) -->
-                  <div v-if="showRegistrants" class="mt-3">
-                    <div class="table-responsive">
-                      <table class="table table-sm align-middle mb-0">
-                        <thead>
-                          <tr>
-                            <th style="width:30%">User</th>
-                            <th style="width:70%">Email</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr v-if="registrantRows.length === 0">
-                            <td colspan="2" class="text-muted">No registrations yet.</td>
-                          </tr>
-                          <tr v-for="row in registrantRows" :key="row.email">
-                            <td>{{ row.name }}</td>
-                            <td>{{ row.email }}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-                <!-- ===== /Registrations ===== -->
-
-                <!-- CTA：Only displayed by not logged in or ordinary users -->
-                <div class="d-grid gap-2 mt-4" v-if="!user || user.role !== 'admin'">
-                  <!-- Not logged in: Log in -->
-                  <router-link
-                    v-if="!user"
-                    class="btn btn-primary btn-lg"
-                    :to="{ name: 'login' }"
-                  >
-                    Sign in to register
-                  </router-link>
-
-                  <!-- User: Registration cancelled -->
-                  <template v-else>
-                    <button
-                      v-if="!alreadyRegistered"
-                      class="btn btn-success btn-lg"
-                      :disabled="status!=='open' || registering"
-                      @click="register"
-                    >
-                      {{ registering ? 'Registering…' : 'Register now' }}
-                    </button>
-
-                    <button
-                      v-else
-                      class="btn btn-danger btn-lg"
-                      @click="cancelOnDetail"
-                    >
-                      Cancel registration
-                    </button>
-                  </template>
-                </div>
-                <!-- /CTA -->
+                <router-link
+                  v-if="!user"
+                  class="btn btn-primary w-100"
+                  :to="{ name: 'login' }">
+                  Sign in to register
+                </router-link>
               </div>
+            </div>
+
+            <!-- ✅ 管理员的评分摘要放在右侧面板下方 -->
+            <div v-if="user && user.role === 'admin'" class="ratings-summary card p-4 shadow-sm mt-4">
+              <h6 class="section-title mb-3">Ratings & Comments</h6>
+              <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="display-avg">{{ summary.count ? summary.avg.toFixed(1) : '—' }}</div>
+                  <div class="stars">
+                    <i v-for="(icon, i) in starIcons" :key="'adm-'+i" class="bi" :class="icon"></i>
+                  </div>
+                </div>
+                <div class="text-muted">
+                  {{ summary.count }} ratings · {{ raterRows.length }} comments
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ✅ 普通用户/访客的评论区块（放在页面底部） -->
+        <div v-if="!user || user.role !== 'admin'" class="col-12 mt-5">
+          <div class="ratings-section card p-4 shadow-sm">
+            <h6 class="section-title mb-3">Ratings & Comments</h6>
+
+            <!-- 所有人都能看到的评论 -->
+            <div v-if="raterRows.length">
+              <div v-for="row in raterRows" :key="row.email" class="mb-3 border-bottom pb-2">
+                <div class="fw-bold">{{ row.name }}</div>
+                <div class="text-warning small">
+                  <i v-for="n in row.value" :key="n" class="bi bi-star-fill"></i>
+                </div>
+                <div class="text-muted small">{{ new Date(row.updatedAt).toLocaleString() }}</div>
+                <p class="mb-0">{{ row.comment }}</p>
+              </div>
+            </div>
+            <div v-else class="text-muted small text-center">No ratings yet</div>
+
+            <!-- 登录用户输入区 -->
+            <div v-if="user && user.role !== 'admin'" class="mt-4 border-top pt-3">
+              <StarRating v-model="myRating" />
+              <textarea v-model.trim="userComment"
+                class="form-control mt-2"
+                rows="2"
+                placeholder="Leave your comment (optional)">
+              </textarea>
+              <button class="btn btn-success btn-sm mt-2"
+                :disabled="saving || !myRating"
+                @click="saveRating">
+                {{ saving ? 'Saving…' : 'Submit' }}
+              </button>
+              <div class="small text-muted mt-2">
+                Avg {{ summary.avg.toFixed(2) }} ({{ summary.count }})
+              </div>
+              <div v-if="flash" class="text-success small mt-1">Thanks for your feedback!</div>
             </div>
           </div>
         </div>
       </div>
 
-      <div v-else class="empty">
+      <div v-else class="empty text-center mt-5">
         <p class="text-danger mb-3">Event not found.</p>
         <router-link class="btn btn-primary" :to="{ name: 'events' }">Back</router-link>
       </div>
@@ -225,318 +151,237 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { sanitizeHtml } from '@/utils/sanitize'
 import { useRoute } from 'vue-router'
-import { getEventBySlug } from '@/services/events'
+import { onAuthStateChanged } from 'firebase/auth'
+import { firebaseAuth } from '@/services/firebase'
+import { auth } from '@/services/auth'
+import { getFirestore, doc, getDoc } from 'firebase/firestore'
+import { getDatabase, ref as dbRef, set, onValue } from 'firebase/database'
 import StarRating from '@/components/StarRating.vue'
-import { ratings } from '@/services/ratings'
+import { get as rtdbGet } from 'firebase/database'
 
 const route = useRoute()
 const event = ref(null)
 const user = ref(null)
-const alreadyRegistered = ref(false)
-const registering = ref(false)
-
-/* ratings */
-const summary = ref({ avg: 0, count: 0, dist: [0,0,0,0,0] })
 const myRating = ref(0)
+const userComment = ref('')
+const summary = ref({ avg: 0, count: 0, dist: [0,0,0,0,0] })
+const raterRows = ref([])
 const saving = ref(false)
 const flash = ref(false)
-const showRaters = ref(false)
-const raterRows = ref([])
+const registering = ref(false)
+const alreadyRegistered = ref(false)
 
-// The five stars corresponding to the average score (full, half and empty)
-const starIcons = computed(() => {
-  const a = Math.max(0, Math.min(5, Number(summary.value.avg || 0)));
-  const res = [];
-  for (let i = 1; i <= 5; i++) {
-    if (a >= i - 0.25) res.push('bi-star-fill');   
-    else if (a >= i - 0.75) res.push('bi-star-half'); 
-    else res.push('bi-star');                       
-  }
-  return res;
-});
+const db = getFirestore()
+const rtdb = getDatabase()
 
-// “X ratings / No ratings yet” 
-const formattedCount = computed(() => {
-  const c = summary.value.count || 0;
-  return c ? `${c.toLocaleString()} ratings` : 'No ratings yet';
-});
+function getImageUrl(fileName){ return new URL(`../assets/events/${fileName}`, import.meta.url).href }
+function getUserKey(u){ return u?.email ? String(u.email).trim().toLowerCase() : null }
 
-/* registrations (admin view only) */
-const showRegistrants = ref(false)
-const registrantRows = ref([])
-
-function loadRatersList() {
-  if (!event.value) return
-  const rows = ratings.list(event.value.id)
-  raterRows.value = rows.map(r => ({
-    email: r.userKey,
-    name: r.userKey.split('@')[0],
-    value: r.value,
-    updatedAt: r.updatedAt
-  }))
+/* --- 当前用户同步 --- */
+function syncUser(){
+  const u = auth.user
+  user.value = u ? { email:u.email, name:u.name||u.email.split('@')[0], role:u.role||'user' } : null
 }
 
-function loadRegistrantsList() {
-  if (!event.value) return
-  const emails = getRegistrations(event.value.id)
-  registrantRows.value = emails.map(em => ({
-    email: em,
-    name: em.split('@')[0]
-  }))
+/* --- 加载活动详情 --- */
+async function load(){
+  const ref = doc(db, 'events', route.params.slug)
+  const snap = await getDoc(ref)
+  if (!snap.exists()){ event.value = null; return }
+  const data = snap.data()
+  event.value = { id: route.params.slug, ...data, registrations: data.bookedCount||0 }
+  listenToRatings(event.value.id)
 }
 
-/* ---------- utils ---------- */
-function getImageUrl(fileName) {
-  return new URL(`../assets/events/${fileName}`, import.meta.url).href
-}
-function getUserKey(u) {
-  return u?.email ? String(u.email).trim().toLowerCase() : null
-}
-
-/* registrations in localStorage */
-function getRegistrations(eventId) {
-  const data = JSON.parse(localStorage.getItem('hhh_registrations') || '{}')
-  const list = data[eventId]
-  return Array.isArray(list) ? list : []
-}
-function saveRegistrations(eventId, list) {
-  const data = JSON.parse(localStorage.getItem('hhh_registrations') || '{}')
-  data[eventId] = list
-  localStorage.setItem('hhh_registrations', JSON.stringify(data))
-}
-function normalizeRegistrations(eventId) {
-  const unique = Array.from(new Set(getRegistrations(eventId)))
-  saveRegistrations(eventId, unique)
-  return unique
+/* --- 实时监听评分 --- */
+function listenToRatings(eventId){
+  const ratingsRef = dbRef(rtdb, `ratings/${eventId}`)
+  onValue(ratingsRef, (snap)=>{
+    const data = snap.val() || {}
+    const values = Object.values(data).map(r=>Number(r.value))
+    if (!values.length){
+      summary.value = { avg:0, count:0, dist:[0,0,0,0,0] }
+      raterRows.value = []
+      return
+    }
+    const dist=[0,0,0,0,0]; values.forEach(v=>dist[v-1]++)
+    summary.value = { avg:values.reduce((a,b)=>a+b,0)/values.length, count:values.length, dist }
+    raterRows.value = Object.entries(data).map(([uid,r])=>({
+      email: r.email || uid,
+      name:  r.name  || uid,
+      value: r.value,
+      comment: r.comment,
+      updatedAt: r.updatedAt
+    }))
+  })
 }
 
-/* ---------- load ---------- */
-async function load() {
-  event.value = await getEventBySlug(route.params.slug)
-
-  const raw = localStorage.getItem('hhh_user')
-  user.value = raw ? JSON.parse(raw) : null
-  if (user.value?.email) user.value.email = String(user.value.email).trim().toLowerCase()
-
-  if (event.value) {
-    const unique = normalizeRegistrations(event.value.id)
-    const key = getUserKey(user.value)
-    event.value.registrations = unique.length
-    alreadyRegistered.value = !!(key && unique.includes(key))
-  }
-
-  loadRatings()
-
-  if (user.value?.role === 'admin') loadRegistrantsList()
+/* --- 保存评分 --- */
+async function saveRating(){
+  if(!event.value||!user.value||user.value.role==='admin')return
+  const key=getUserKey(user.value); if(!key||!myRating.value)return
+  saving.value=true
+  const ref=dbRef(rtdb,`ratings/${event.value.id}/${key}`)
+  await set(ref,{
+    value:myRating.value,
+    comment:userComment.value||'',
+    updatedAt:new Date().toISOString(),
+    name:user.value.name,
+    email:user.value.email
+  })
+  saving.value=false; flash.value=true
+  setTimeout(()=>flash.value=false,1200)
 }
 
-function loadRatings() {
-  if (!event.value) return
-  summary.value = ratings.getSummary(event.value.id)
-  const key = getUserKey(user.value)
-  myRating.value = key ? ratings.getUserRating(event.value.id, key) : 0
-  if (user.value?.role === 'admin') loadRatersList()
-}
-
-onMounted(load)
-watch(() => route.params.slug, load)
-watch([() => event.value?.id, () => user.value?.email], loadRatings)
-watch([() => event.value?.id, () => user.value?.role], () => {
-  if (user.value?.role === 'admin') loadRegistrantsList()
+/* --- 状态与描述计算 --- */
+const status=computed(()=>{
+  if(!event.value)return'loading'
+  const today=new Date(),date=new Date(event.value.date)
+  if(date<today)return'ended'
+  if(event.value.registrations>=event.value.capacity)return'full'
+  return'open'
+})
+const statusText=computed(()=>status.value==='open'?'Open':status.value==='full'?'Full':'Ended')
+const remaining=computed(()=>Math.max(0,(event.value?.capacity||0)-(event.value?.registrations||0)))
+const safeAboutHtml=computed(()=>sanitizeHtml(event.value?.description||'This workshop provides practical wellness tips.'))
+const starIcons=computed(()=>{
+  const a=Math.max(0,Math.min(5,Number(summary.value.avg||0)));const res=[]
+  for(let i=1;i<=5;i++){if(a>=i-0.25)res.push('bi-star-fill');else if(a>=i-0.75)res.push('bi-star-half');else res.push('bi-star')}
+  return res
 })
 
-/* ---------- derived ---------- */
-const status = computed(() => {
-  if (!event.value) return 'loading'
-  const today = new Date()
-  const date = new Date(event.value.date)
-  if (date < today) return 'ended'
-  if (event.value.registrations >= event.value.capacity) return 'full'
-  return 'open'
-})
-const statusText = computed(() =>
-  status.value === 'open' ? 'Open' :
-  status.value === 'full' ? 'Full' : 'Ended'
-)
-const remaining = computed(() =>
-  Math.max(0, (event.value?.capacity || 0) - (event.value?.registrations || 0))
-)
-const specificDesc = computed(() =>
-  event.value?.content
-    ? `${event.value.content} This session includes guided activities and take-home resources to help you put ideas into practice immediately.`
-    : 'This session provides practical guidance with hands-on activities and take-home resources.'
-)
-const safeAboutHtml = computed(() => sanitizeHtml(specificDesc.value))
-const learnPoints = computed(() => [
-  'Nutrition basics with a 7-day meal template',
-  'Beginner-friendly 30–40 min exercise routine',
-  'Mindfulness techniques for daily stress relief',
-  'Q&A with facilitator and take-home checklist'
-])
+// 导出报名名单为 CSV（姓名、邮箱、性别、年龄）——管理员使用
+async function exportRegistrations() {
+  if (!event.value) return;
+  const eventId = event.value.id;
+  const eventTitle = String(event.value.title || eventId);
 
-/* ---------- actions: register / cancel ---------- */
-function register() {
-  if (!event.value || !user.value || status.value !== 'open' || registering.value) return
-  if (user.value?.role === 'admin') return   
+  try {
+    // 1) 读 RTDB: registrations/{eventId}
+    const regSnap = await rtdbGet(dbRef(rtdb, `registrations/${eventId}`));
+    const regs = regSnap.exists() ? regSnap.val() : {};
 
-  registering.value = true
+    const rows = [];
 
-  const key = getUserKey(user.value)
-  if (!key) { registering.value = false; return }
+    // 2) 汇总报名信息（报名节点优先，补齐 RTDB/Firestore 的 users）
+    for (const [uid, r] of Object.entries(regs)) {
+      let name   = r.name   || '';
+      let email  = r.email  || '';
+      let gender = r.gender || '';
+      let age    = r.age    ?? '';
 
-  const unique = new Set(getRegistrations(event.value.id))
-  if (unique.has(key)) {
-    alreadyRegistered.value = true
-    registering.value = false
-    return
+      try {
+        const u1 = await rtdbGet(dbRef(rtdb, `users/${uid}`));
+        if (u1.exists()) {
+          const u = u1.val();
+          name   ||= u.name   || '';
+          email  ||= u.email  || '';
+          gender ||= u.gender || '';
+          age    ||= u.age    || '';
+        }
+      } catch {}
+
+      if (!name || !email || !gender || !age) {
+        try {
+          const u2 = await getDoc(doc(db, 'users', uid));
+          if (u2.exists()) {
+            const u = u2.data();
+            name   ||= u.name   || '';
+            email  ||= u.email  || '';
+            gender ||= u.gender || '';
+            age    ||= u.age    || '';
+          }
+        } catch {}
+      }
+
+      rows.push({ name, email, gender, age });
+    }
+
+    // 3) 生成 CSV（表头 5 列，第一列是活动标题）
+    const header = ['Name', 'Email', 'Gender', 'Age'];
+    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+    const lines = [
+      header.join(','),
+      ...rows.map(r => [
+        eventTitle,          // ✅ CSV 里用原始标题，不要 encode
+        r.name,
+        r.email,
+        r.gender,
+        r.age
+      ].map(esc).join(','))
+    ];
+
+    // 文件名可以用安全版（但别用到 CSV 单元格里）
+    const safeFileTitle = eventTitle.replace(/[^\w\d]+/g, '-').toLowerCase();
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeFileTitle}-attendees.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error(e);
+    alert('Export failed. Please try again.');
   }
-  unique.add(key)
-  const list = Array.from(unique)
-  saveRegistrations(event.value.id, list)
-
-  event.value.registrations = list.length
-  alreadyRegistered.value = true
-  registering.value = false
 }
 
-function cancelOnDetail() {
-  if (!event.value || !user.value) return
-  if (!confirm('Cancel this registration?')) return
-
-  const key = getUserKey(user.value)
-  const list = getRegistrations(event.value.id)
-  const next = list.filter(e => e !== key)
-  saveRegistrations(event.value.id, next)
-
-  event.value.registrations = next.length
-  alreadyRegistered.value = false
-}
-
-/* ---------- actions: ratings ---------- */
-function saveRating() {
-  if (!event.value || !user.value) return
-  if (user.value.role === 'admin') return 
-  const key = getUserKey(user.value)
-  if (!key || !myRating.value) return
-  saving.value = true
-  summary.value = ratings.set(event.value.id, key, myRating.value)
-  saving.value = false
-  flash.value = true
-  setTimeout(() => (flash.value = false), 1200)
-}
-
-function resetRatings() {
-  if (user.value?.role !== 'admin') return
-  if (!confirm('Reset all ratings for this event?')) return
-  summary.value = ratings.clearEvent(event.value.id)
-  myRating.value = 0
-  loadRatersList()
-}
+onMounted(()=>{
+  onAuthStateChanged(firebaseAuth,()=>syncUser())
+  syncUser()
+  load()
+})
 </script>
 
 <style scoped>
-.event-detail-page{
-  background:#f6f8fb;
-  min-height:calc(100dvh - 72px);
-  font-family:"Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-}
-.link-back{
-  display:inline-block;
-  margin-bottom:12px;
-  text-decoration:none;
-  color:#1a73e8;
-  font-weight:600;
-}
-.link-back:hover{ text-decoration:underline; }
-
-/* unified big card */
-.detail-card{
-  background:#fff;
-  border:1px solid #e7eaee;
-  border-radius:28px;
-  padding:24px 28px 12px;
+.event-detail-page{background:#f6f8fb;min-height:calc(100dvh - 72px);font-family:"Poppins",system-ui;}
+.link-back{display:inline-block;margin-bottom:12px;text-decoration:none;color:#1a73e8;font-weight:600;}
+.detail-card{background:#fff;border:1px solid #e7eaee;border-radius:28px;padding:24px 28px 12px;}
+.title{font-weight:800;font-size:clamp(28px,3.2vw,44px);color:#202124;margin-bottom:16px;}
+.hero-img{width:100%;max-height:560px;object-fit:cover;}
+.badge{font-weight:700;padding:8px 12px;}
+.chip{display:inline-block;background:#f1f3f4;color:#202124;padding:8px 12px;border-radius:999px;font-weight:700;}
+.divider{height:1px;background:#e7eaee;margin:12px 0;}
+.section-title{font-weight:800;font-size:14px;text-transform:uppercase;margin-bottom:6px;}
+.learn-list{margin-left:10px;color:#333;}
+.btn.w-100{border-radius:16px;font-weight:700;}
+.ratings-section{background:#fff;border-radius:20px;}
+.ratings-section .bi-star-fill{color:#f5b301;}
+.display-avg{font-size:38px;font-weight:800;color:#222;}
+.ratings-summary {
+  border-radius: 20px;
+  background: #fff;
 }
 
-.title{
-  font-weight:800;
-  font-size: clamp(28px, 3.2vw, 44px);
-  line-height:1.06;
-  color:#202124;
-  margin-bottom:16px;
+.display-avg {
+  font-size: 38px;
+  font-weight: 800;
+  color: #222;
 }
 
-.hero-img{
-  width:100%;
-  max-height:560px;
-  object-fit:cover;
+.ratings-summary .bi-star-fill {
+  color: #f5b301;
 }
 
-/* inside right card */
-.panel{
-  border:0;
-  border-radius:18px;
-}
-.panel .card-body{ padding:20px; }
-
-.badge{ font-weight:700; padding:8px 12px; letter-spacing:.2px; }
-.chip{
-  display:inline-block; background:#f1f3f4; color:#202124;
-  padding:8px 12px; border-radius:999px; font-weight:700;
+.generic-tip {
+  background: #f8fafc;
+  border: 1px solid #e6ebf2;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #445066;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
-.key-info .key{
-  width:95px; display:inline-block; color:#5f6368; font-weight:600;
+.admin-export {
+  margin-top: 12px;
 }
-.key-info .val{ color:#202124; }
-
-.divider{ height:1px; background:#e7eaee; margin:12px 0; }
-
-.section-title{
-  font-weight:800; font-size:14px; color:#202124;
-  letter-spacing:.2px; text-transform:uppercase; margin-bottom:6px;
-}
-.about{ color:#202124; margin-bottom:10px; }
-.learn-list{ list-style:none; padding:0; margin:0; }
-.learn-list li{ color:#5f6368; margin-bottom:6px; }
-
-.display-avg { font-size: 32px; font-weight: 800; line-height: 1; }
-.alert { border-radius: 14px; }
-
-.rating-summary{
-  text-align:center;
-  display:flex;                
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-}
-.rating-summary .count{
-  font-size:12px;
-  color:#6b7280;
-  font-weight:700;
-  letter-spacing:.3px;
-  text-transform:uppercase;
-}
-.rating-summary .score{
-  font-size:42px;
-  font-weight:800;
-  line-height:1.1;
-  margin:4px 0 6px;
-}
-
-.rating-summary .stars{ margin-top:2px; }
-.rating-summary .stars .bi{ font-size:20px; margin:0 2px; }
-.rating-summary .stars .bi-star-fill,
-.rating-summary .stars .bi-star-half{ color:#f5b301; }   
-.rating-summary .stars .bi-star{ color:#d1d5db; }        
-
-.rating-summary.compact .score{ font-size:28px; }
-.rating-summary.compact .stars .bi{ font-size:18px; }
-
-
-.btn{ border-radius:20px; font-weight:700; padding:12px 18px; }
-.btn-danger{ background:#d93025; color:#fff; border:0; }
-.btn-danger:hover{ filter:brightness(.95); }
 </style>

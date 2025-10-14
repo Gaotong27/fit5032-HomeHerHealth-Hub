@@ -1,6 +1,6 @@
 <template>
   <section class="account-landing">
-    <div class="card-wrap">
+    <div class="card-wrap" v-if="!user">
       <!-- profile photo -->
       <div class="avatar">
         <i class="bi bi-person"></i>
@@ -14,15 +14,54 @@
 
       <!-- buttons -->
       <div class="actions-vertical">
-        <RouterLink class="btn btn-primary w-100" to="/Login">Sign in</RouterLink>
-        <RouterLink class="btn btn-ghost w-100" to="/Register">Create an account</RouterLink>
+        <RouterLink class="btn btn-primary w-100" to="/login">Sign in</RouterLink>
+        <RouterLink class="btn btn-ghost w-100" to="/register">Create an account</RouterLink>
+      </div>
+    </div>
+
+    <!-- Logged in shows "Welcome" -->
+    <div class="card-wrap" v-else>
+      <div class="avatar">
+        <i class="bi bi-person-check"></i>
+      </div>
+      <h1 class="title">Welcome back!</h1>
+      <p class="subtitle">You're already signed in as {{ user.email }}</p>
+
+      <div class="actions-vertical">
+        <RouterLink v-if="isAdmin" class="btn btn-primary w-100" to="/admin">
+          Go to Admin Dashboard
+        </RouterLink>
+        <RouterLink v-else class="btn btn-primary w-100" to="/profile">
+          Go to My Profile
+        </RouterLink>
+
+        <button class="btn btn-ghost w-100" @click="logout">Sign out</button>
       </div>
     </div>
   </section>
 </template>
 
 <script setup>
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { auth } from '@/services/auth'
 
+const router = useRouter()
+const ADMIN_EMAIL = 'admin@homeherhealth.org'
+const user = ref(null)
+
+onMounted(() => {
+  user.value = auth.user
+  setTimeout(() => (user.value = auth.user), 300)
+})
+
+const isAdmin = computed(() => user.value?.email === ADMIN_EMAIL)
+
+const logout = async () => {
+  await auth.logout()
+  user.value = null
+  router.replace('/')
+}
 </script>
 
 <style scoped>

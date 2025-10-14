@@ -169,6 +169,7 @@
 
 <script>
 import { auth } from '@/services/auth'
+const ADMIN_EMAIL = 'admin@homeherhealth.org'
 
 export default {
   name: 'RegisterView',
@@ -281,13 +282,17 @@ export default {
           gender: this.form.gender,
           age: this.form.age,
           reason: this.form.reason,
-          role: 'user'
-        }, { autoLogin: false });
+        });
 
-        // registed → login view
-        this.$router.replace({ name: 'login' });
+        // Auto-login after register
+        const email = this.form.email.trim().toLowerCase();
+        if (email === ADMIN_EMAIL) {
+          this.$router.replace({ name: 'admin' });
+        } else {
+          this.$router.replace({ name: 'profile' });
+        }
       }catch(e){
-        alert(e?.message || 'Registration failed');
+        this.errors.email = e?.message || 'Registration failed';
       }finally{
         this.submitting = false;
       }

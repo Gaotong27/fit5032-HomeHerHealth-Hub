@@ -14,14 +14,12 @@
           <p class="subtitle">Welcome back</p>
         </div>
 
-        <!-- right table -->
+        <!-- right form -->
         <div class="right">
           <form @submit.prevent="onSubmit">
-            <!-- error -->
             <div v-if="serverError" class="banner-error">{{ serverError }}</div>
 
             <div class="form-grid">
-              <!-- Email | Password -->
               <div class="field">
                 <label>Email</label>
                 <input
@@ -53,9 +51,11 @@
               </div>
             </div>
 
-            <!-- buttom -->
+            <!-- bottom -->
             <div class="actions">
-              <router-link class="btn btn-ghost" :to="{ name: 'register' }">Create an account</router-link>
+              <router-link class="btn btn-ghost" :to="{ name: 'register' }">
+                Create an account
+              </router-link>
               <button class="btn btn-primary" type="submit" :disabled="submitting">
                 {{ submitting ? 'Signing in…' : 'Sign in' }}
               </button>
@@ -69,30 +69,28 @@
 
 <script>
 import { auth } from '@/services/auth'
+const ADMIN_EMAIL = 'admin@homeherhealth.org'
 
 export default {
   name: 'LoginView',
   data() {
     return {
       submitting: false,
-      remember: true,     
       serverError: '',
       form: { email: '', password: '' },
       touched: { email: false, password: false },
-      errors:  { email: '',   password: '' }
+      errors:  { email: '', password: '' },
     }
   },
   methods: {
-    // ===== JS validation =====
-    isRequired(v){ return !!v && String(v).trim().length>0 },
-    isEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || '') },
+    isRequired(v){ return !!v && String(v).trim().length > 0 },
 
-    validate(key, fromBlur=false){
-      if(fromBlur) this.touched[key] = true
-      const v = this.form[key]; let msg = ''
+    validate(key, fromBlur = false) {
+      if (fromBlur) this.touched[key] = true
+      const v = this.form[key]
+      let msg = ''
       if (key === 'email') {
         if (!this.isRequired(v)) msg = 'Email is required.'
-        else if (!this.isEmail(v)) msg = 'Please enter a valid email.'
       }
       if (key === 'password') {
         if (!this.isRequired(v)) msg = 'Password is required.'
@@ -100,8 +98,9 @@ export default {
       this.errors[key] = msg
       return !msg
     },
-    validateAll(markTouched=false){
-      if(markTouched) Object.keys(this.touched).forEach(k => this.touched[k] = true)
+
+    validateAll(markTouched = false) {
+      if (markTouched) Object.keys(this.touched).forEach(k => (this.touched[k] = true))
       return ['email','password'].every(k => this.validate(k))
     },
 
@@ -111,36 +110,20 @@ export default {
       this.submitting = true
 
       try {
-        // ===== Hard login for administrators =====
-        if (this.form.email === 'admin@hhh.com' && this.form.password === 'admin123') {
-          const exists = (auth.listUsers?.() || []).some(u => u.email === 'admin@hhh.com')
-          if (!exists) {
-            await auth.register({
-              email: 'admin@hhh.com',
-              password: 'admin123',
-              name: 'Administrator',
-              role: 'admin'
-            }) 
-          }
+        const emailInput = (this.form.email || '').trim()
+        await auth.login({ email: emailInput, password: this.form.password })
 
-          await auth.login({ email: this.form.email, password: this.form.password })
-          this.$router.replace('/admin')
-          return
-        }
-
-        // ===== Users =====
-        await auth.login({ email: this.form.email, password: this.form.password })
-        this.$router.replace('/')
-
+        const emailLower = emailInput.toLowerCase()
+        this.$router.replace({ name: emailLower === ADMIN_EMAIL ? 'admin' : 'profile' })
       } catch (e) {
-        this.serverError = e?.message || 'Login failed'
+        this.serverError = e?.message || 'Login failed.'
         this.errors.password = this.serverError
         this.touched.password = true
       } finally {
         this.submitting = false
       }
-    }
-  }
+    },
+  },
 }
 </script>
 

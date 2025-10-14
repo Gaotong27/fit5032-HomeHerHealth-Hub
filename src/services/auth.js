@@ -1,73 +1,136 @@
-const LS_USERS = 'hhh.users';
-const LS_SESS  = 'hhh.session';
-const LS_UIUSR = 'hhh_user';          
+import { firebaseAuth } from './firebase'
+import {
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+} from 'firebase/auth'
+import {
+  getFirestore, doc, setDoc, getDoc,
+} from 'firebase/firestore'
 
-function loadUsers(){ try{ return JSON.parse(localStorage.getItem(LS_USERS) || '[]') }catch{ return [] } }
-function saveUsers(u){ localStorage.setItem(LS_USERS, JSON.stringify(u)) }
-function setSession(userId){ localStorage.setItem(LS_SESS, JSON.stringify({ userId })) }
-function getSession(){ try{ return JSON.parse(localStorage.getItem(LS_SESS) || 'null') }catch{ return null } }
-function clearSession(){ localStorage.removeItem(LS_SESS) }
-function sanitize(u){ if(!u) return null; const { password, ...rest } = u; return rest }
+const db = getFirestore()
+const ADMIN_EMAIL = 'admin@homeherhealth.org'
 
+let currentUser = null
 
-function writeUiUser(u){
-  const profile = u ? {
-    uid: u.id,
-    name: u.name || (u.email?.split('@')[0] || 'User'),
-    email: u.email,
-    role: u.role || 'user'     
-  } : null;
-  if (profile) localStorage.setItem(LS_UIUSR, JSON.stringify(profile));
-  else localStorage.removeItem(LS_UIUSR);
-
-  window.dispatchEvent(new Event('hhh:auth-updated'));
+// ---------- helpers ----------
+function normalizeEmail(e) {
+  return (e || '').trim().toLowerCase()
 }
 
-function randomSalt(len=16){ const a=new Uint8Array(len); crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('') }
-async function sha256(t){ const d=new TextEncoder().encode(t); const buf=await crypto.subtle.digest('SHA-256', d); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('') }
+function composeUser(fbUser, docData) {
+  const email = normalizeEmail(fbUser?.email)
+  const base = {
+    uid: fbUser.uid,
+    email: fbUser.email, 
+    name: fbUser.displayName || (email ? email.split('@')[0] : 'User'),
+    role: email === ADMIN_EMAIL ? 'admin' : 'user',
+  }
+  return docData ? { ...base, ...docData } : base
+}
+
+async function writeUserDoc(uid, data) {
+  await setDoc(doc(db, 'users', uid), data, { merge: true })
+}
+
+// ---------- public API ----------
+export async function register({ email, password, name, gender, age, reason }) {
+  const emailNorm = normalizeEmail(email)
+
+  // 1) Create user in Firebase Auth
+  const cred = await createUserWithEmailAndPassword(firebaseAuth, emailNorm, password)
+
+  // 2) Update displayName in Firebase Auth profile
+  if (name) await updateProfile(cred.user, { displayName: name })
+
+  // 3) Create user document in Firestore
+  const payload = {
+    uid: cred.user.uid,
+    email: cred.user.email,                        
+    name: name || (emailNorm ? emailNorm.split('@')[0] : 'User'),
+    role: emailNorm === ADMIN_EMAIL ? 'admin' : 'user',
+  }
+  if (gender !== undefined) payload.gender = gender
+  if (age !== undefined && age !== null && age !== '') payload.age = Number(age)
+  if (reason !== undefined) payload.reason = String(reason).trim()
+
+  try {
+    await writeUserDoc(cred.user.uid, payload)
+  } catch (e) {
+    console.warn('register: setDoc failed, will continue anyway:', e)
+  }
+
+  return cred.user
+}
+
+export async function login({ email, password }) {
+  const cred = await signInWithEmailAndPassword(firebaseAuth, normalizeEmail(email), password)
+  return cred.user
+}
+
+export async function logout() {
+  await signOut(firebaseAuth)
+}
+
+export async function refresh() {
+  const fbUser = firebaseAuth.currentUser
+  if (!fbUser) {
+    currentUser = null
+    window.dispatchEvent(new CustomEvent('hhh:auth-updated'))
+    return null
+  }
+  try {
+    const ref = doc(db, 'users', fbUser.uid)
+    const snap = await getDoc(ref)
+    currentUser = snap.exists() ? composeUser(fbUser, snap.data()) : composeUser(fbUser)
+  } catch (e) {
+    console.warn('refresh getDoc failed:', e)
+    currentUser = composeUser(fbUser)
+  }
+  window.dispatchEvent(new CustomEvent('hhh:auth-updated'))
+  return currentUser
+}
+
+// ---------- auth-state listener ----------
+onAuthStateChanged(firebaseAuth, async (fbUser) => {
+  if (!fbUser) {
+    currentUser = null
+    window.dispatchEvent(new CustomEvent('hhh:auth-updated'))
+    return
+  }
+
+  try {
+    const ref = doc(db, 'users', fbUser.uid)
+    const snap = await getDoc(ref)
+
+    if (snap.exists()) {
+      currentUser = composeUser(fbUser, snap.data())
+    } else {
+      // New user, create a document
+      const base = composeUser(fbUser)
+      await writeUserDoc(fbUser.uid, {
+        uid: fbUser.uid,
+        email: base.email,
+        name: base.name,
+        role: base.role,
+      })
+      currentUser = base
+    }
+  } catch (e) {
+    console.warn('onAuthStateChanged getDoc failed:', e)
+    currentUser = composeUser(fbUser)
+  }
+
+  window.dispatchEvent(new CustomEvent('hhh:auth-updated'))
+})
 
 export const auth = {
-  get user(){
-    const s=getSession(); if(!s) return null;
-    const u=loadUsers().find(x=>x.id===s.userId);
-    return sanitize(u);
-  },
-  isLoggedIn(){ return !!this.user },
-
-  async register({ email, password, name, gender='', age, reason, role='user' }, opts = { autoLogin:false }){
-    const users = loadUsers();
-    if (users.some(u => u.email.toLowerCase() === String(email).toLowerCase())){
-      const e=new Error('Email already registered'); e.code='EMAIL_TAKEN'; throw e;
-    }
-    const id   = (crypto.randomUUID?.() || ('u_'+Date.now()));
-    const salt = randomSalt();
-    const hash = await sha256(salt + password);
-    const user = { id, email, name, gender, age:Number(age), reason, role,
-                   password:{ salt, hash }, createdAt:new Date().toISOString() };
-    users.push(user); saveUsers(users);
-
-    if (opts?.autoLogin) {
-      setSession(id);
-      writeUiUser(user);                 
-    }
-    return sanitize(user);
-  },
-
-  async login({ email, password }){
-    const users = loadUsers();
-    const u = users.find(x => x.email.toLowerCase() === String(email).toLowerCase());
-    if (!u){ const e=new Error('User not found'); e.code='NOT_FOUND'; throw e }
-    const hash = await sha256(u.password.salt + password);
-    if (hash !== u.password.hash){ const e=new Error('Wrong password'); e.code='BAD_CREDENTIALS'; throw e }
-    setSession(u.id);
-    writeUiUser(u);                       
-    return sanitize(u);
-  },
-
-  logout(){
-    clearSession();                        
-    writeUiUser(null);                    
-  },
-
-  listUsers(){ return loadUsers().map(sanitize) },
-};
+  get user() { return currentUser },
+  isLoggedIn() { return !!currentUser?.email },
+  register,
+  login,
+  logout,
+  refresh, 
+}

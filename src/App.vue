@@ -1,44 +1,58 @@
-<!-- src/App.vue -->
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { auth } from '@/services/auth'         
+import { onAuthStateChanged } from 'firebase/auth'
+import { firebaseAuth } from '@/services/firebase'
+import { auth } from '@/services/auth'
 
 const router = useRouter()
 const logoUrl = new URL('./assets/logo.svg', import.meta.url).href
 
+const ADMIN_EMAIL = 'admin@homeherhealth.org'
 const user = ref(null)
+let unsub = null
 
-function refreshUser() {
-  const raw = localStorage.getItem('hhh_user')
-  if (!raw) { user.value = null; return }
-  try { user.value = JSON.parse(raw) } catch { user.value = null }
+function syncFromAuth() {
+  const u = auth.user
+  user.value = u
+    ? { email: u.email, name: u.name || u.email?.split('@')[0] || 'User' }
+    : null
 }
 
 onMounted(() => {
-  refreshUser()
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'hhh_user' || e.key === 'hhh.session') {
-      refreshUser()
-    }
-  })
-  window.addEventListener('hhh:auth-updated', refreshUser)
+  // 1) Listen to Firebase Auth state changes
+
+unsub = onAuthStateChanged(firebaseAuth, (fbUser) => {
+  if (!fbUser) user.value = null
+  else syncFromAuth() 
+})
+
+  // 2) First time sync
+syncFromAuth()
+
+// 3) Listen to custom auth update events
+window.addEventListener('hhh:auth-updated', syncFromAuth)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('hhh:auth-updated', refreshUser)
+  if (typeof unsub === 'function') unsub()
+window.removeEventListener('hhh:auth-updated', syncFromAuth)
 })
 
+const isAdmin = computed(() =>
+  (user.value?.email || '').toLowerCase() === ADMIN_EMAIL
+)
+
 const userInitial = computed(() => {
-  const n = user.value?.name?.trim?.() || ''
+  const n = user.value?.name?.trim?.() || user.value?.email || ''
   return n ? n.charAt(0).toUpperCase() : 'U'
 })
 
-function logout() {
-  auth.logout()
-  refreshUser()                              
-  router.replace({ name: 'account' })        
+async function logout() {
+  await auth.logout()
+  user.value = null
+  router.replace({ name: 'home' })
 }
 </script>
 
@@ -79,7 +93,7 @@ function logout() {
               <RouterLink to="/clinics" class="nav-link hhh-nav-link">Clinics Map</RouterLink>
             </li>
 
-            <!-- not logged in：show Sign in button -->
+            <!-- Not login：Sign in -->
             <li v-if="!user" class="nav-item">
               <RouterLink
                 :to="{ name: 'account' }"
@@ -90,7 +104,7 @@ function logout() {
               </RouterLink>
             </li>
 
-            <!-- logged in：Avatar + name -->
+            <!-- Logged in：Avatar + Menu -->
             <li v-else class="nav-item dropdown">
               <button
                 class="btn btn-light rounded-pill px-2 d-flex align-items-center gap-2"
@@ -113,11 +127,20 @@ function logout() {
                   </div>
                 </li>
                 <li><hr class="dropdown-divider" /></li>
-                <li>
+
+                <!-- Administrator Entry（ admin@homeherhealth.org ） -->
+                <li v-if="isAdmin">
+                  <RouterLink class="dropdown-item" :to="{ name: 'admin' }">
+                    <i class="bi bi-speedometer2 me-2"></i> Admin Dashboard
+                  </RouterLink>
+                </li>
+
+                <li v-else>
                   <RouterLink class="dropdown-item" :to="{ name: 'profile' }">
                     <i class="bi bi-gear me-2"></i> My Account
                   </RouterLink>
                 </li>
+
                 <li>
                   <RouterLink class="dropdown-item" to="/help">
                     <i class="bi bi-question-circle me-2"></i> Help

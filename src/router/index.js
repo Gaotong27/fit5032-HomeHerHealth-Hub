@@ -11,41 +11,46 @@ import AdminHomeView from '@/views/AdminHomeView.vue'
 
 import { auth } from '@/services/auth'
 
+const ADMIN_EMAIL = 'admin@homeherhealth.org'
+
 const routes = [
   { path: '/', name: 'home', component: HomeView },
 
+  // Account entry point
   {
     path: '/account',
     name: 'account',
     component: AccountView,
     beforeEnter: (to, from, next) => {
       const user = auth.user
-      if (user?.role === 'admin') return next({ name: 'admin' })  
-      if (user?.email) return next({ name: 'profile' })           
-      return next()                                              
+      if (user?.email === ADMIN_EMAIL) return next({ name: 'admin' }) // Administrator
+      if (user?.email) return next({ name: 'profile' }) // User
+      return next() //  Not logged in
     },
   },
 
   { path: '/login', name: 'login', component: LoginView },
   { path: '/register', name: 'register', component: RegisterView },
 
+  // User profile page
   {
     path: '/profile',
     name: 'profile',
     component: UserProfileView,
     meta: { requiresAuth: true },
     beforeEnter: (to, from, next) => {
-    const user = JSON.parse(localStorage.getItem('hhh_user') || 'null')
-    if (user?.role === 'admin') {
-      return next({ name: 'admin' })        
-    }
-    next()
-  }
+      const user = auth.user
+      if (user?.email === ADMIN_EMAIL) {
+        return next({ name: 'admin' }) // Administrator
+      }
+      next()
+    },
   },
 
   { path: '/events', name: 'events', component: EventsListView },
   { path: '/events/:slug', name: 'event-detail', component: EventDetailView, props: true },
 
+  //  Admin dashboard
   {
     path: '/admin',
     name: 'admin',
@@ -60,15 +65,21 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
+//  Global navigation guard
 router.beforeEach((to, from, next) => {
   const user = auth.user
+
+  //  needs to be logged in
   if (to.meta.requiresAuth && !user?.email) {
     return next({ name: 'account' })
   }
-  if (to.meta.requiresAdmin && user?.role !== 'admin') {
+
+  //  needs to be admin
+  if (to.meta.requiresAdmin && user?.email !== ADMIN_EMAIL) {
     alert('Only administrators can access the background')
     return next({ name: 'home' })
   }
+
   next()
 })
 
