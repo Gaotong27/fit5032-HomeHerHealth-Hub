@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
+    "@sendgrid/mail": "^8.1.6",
     "bootstrap": "^5.3.8",
     "cors": "^2.8.5",
     "dompurify": "^3.2.6",
