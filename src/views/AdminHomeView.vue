@@ -66,34 +66,45 @@
           <!-- list -->
           <div class="row g-3">
             <div v-for="ev in visibleEvents" :key="ev.id" class="col-12">
-              <div class="event-card card shadow-sm p-3 d-flex flex-wrap align-items-center gap-3">
-                <img :src="ev.imageUrl || getImageUrl(ev.image)" :alt="ev.title" class="thumb rounded-3 shadow-sm" />
-                <div class="flex-grow-1 min-w-0">
-                  <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <h5 class="mb-0 text-truncate">{{ ev.title }}</h5>
-                    <span class="badge rounded-pill"
-                          :class="{
-                            'bg-success': ev.status==='open',
-                            'bg-danger':  ev.status==='full',
-                            'bg-secondary': ev.status==='ended'
-                          }">
-                      {{ ev.statusText }}
-                    </span>
-                  </div>
-                  <div class="meta text-muted small mt-1">
-                    <i class="bi bi-calendar2 me-1"></i>{{ ev.date }}
-                    <span class="mx-2">•</span>
-                    <i class="bi bi-geo-alt me-1"></i>{{ ev.location }}
-                    <span class="mx-2">•</span>
-                    <i class="bi bi-people me-1"></i>{{ ev.registrations }} / {{ ev.capacity }}
-                  </div>
+              <div class="event-card card shadow-sm p-3 text-center">
+
+                <!-- Event Image -->
+                <img
+                  :src="ev.imageUrl || getImageUrl(ev.image)"
+                  :alt="ev.title"
+                  class="thumb rounded-3 shadow-sm mx-auto mb-3"
+                />
+
+                <!-- Title + Status -->
+                <h5 class="mb-1">{{ ev.title }}</h5>
+                <div class="d-flex justify-content-center align-items-center gap-2 mb-2 flex-wrap">
+                  <span class="badge rounded-pill"
+                        :class="{
+                          'bg-success': ev.status==='open',
+                          'bg-danger':  ev.status==='full',
+                          'bg-secondary': ev.status==='ended'
+                        }">
+                    {{ ev.statusText }}
+                  </span>
                 </div>
 
-                <RouterLink class="btn btn-outline-primary" :to="{ path: '/events/' + ev.slug }">
-                  View details
-                </RouterLink>
-                <button class="btn btn-outline-secondary" @click="openEdit(ev)">Edit</button>
-                <button class="btn btn-outline-danger" @click="remove(ev)">Delete</button>
+                <!-- Info -->
+                <div class="meta text-muted small mb-3">
+                  <i class="bi bi-calendar2 me-1"></i>{{ ev.date }}
+                  <span class="mx-2">•</span>
+                  <i class="bi bi-geo-alt me-1"></i>{{ ev.location }}
+                  <span class="mx-2">•</span>
+                  <i class="bi bi-people me-1"></i>{{ ev.registrations }} / {{ ev.capacity }}
+                </div>
+
+                <!-- Edit Button -->
+                <div class="actions d-flex justify-content-center gap-2 mt-2">
+                  <RouterLink class="btn btn-outline-primary px-3" :to="{ path: '/events/' + ev.slug }">
+                    View details
+                  </RouterLink>
+                  <button class="btn btn-outline-secondary px-3" @click="openEdit(ev)">Edit</button>
+                  <button class="btn btn-outline-danger px-3" @click="remove(ev)">Delete</button>
+                </div>
               </div>
             </div>
 
@@ -442,21 +453,33 @@ async function loadEvents() {
 
 
 onMounted(() => {
-  // Real-time listener
   const q = collection(db, 'events')
-  onSnapshot(collection(db, 'events'), (snapshot) => {
+  onSnapshot(q, (snapshot) => {
     const today = new Date()
-    all.value = snapshot.docs.map(docSnap => {
-      const ev = docSnap.data()
+    all.value = snapshot.docs.map(d => {
+      const ev = d.data()
+      const capacity = Number(ev.capacity || 0)
+      const registrations = Number(ev.registrations ?? ev.bookedCount ?? 0)   
+      const remaining = ev.remaining != null
+        ? Number(ev.remaining)
+        : Math.max(0, capacity - registrations)                                
+
       const dateObj = new Date(ev.date)
       const status =
         dateObj < today ? 'ended'
-        : (Number(ev.bookedCount || 0) >= Number(ev.capacity || 0) ? 'full' : 'open')
+        : remaining <= 0 ? 'full'
+        : 'open'
+
       return {
-        ...ev,
-        id: docSnap.id,
-        slug: ev.slug || docSnap.id,        
-        registrations: Number(ev.bookedCount || 0),
+        id: d.id,
+        slug: ev.slug || d.id,
+        title: ev.title || d.id,
+        location: ev.location || '',
+        date: ev.date,
+        imageUrl: ev.imageUrl,
+        capacity,
+        registrations,  
+        remaining,      
         status,
         statusText: status.charAt(0).toUpperCase() + status.slice(1),
         _dateObj: dateObj,
@@ -464,12 +487,13 @@ onMounted(() => {
     })
   })
 
-  // open panel from URL query
+  // Choose active panel 
   const p = String(route.query.panel || '').toLowerCase()
   if (['events','users','feedback','resources','clinics','content','reports','settings'].includes(p)) {
     activePanel.value = p
   }
 })
+
 watch(() => route.query.panel, (p) => {
   if (!p) return
   activePanel.value = String(p)
@@ -750,10 +774,27 @@ onMounted(() => {
 
 .card-sub{ border:1px solid #e7eaee; border-radius:12px; background:#f9fafb; }
 
-/* event list */
-.event-card{ border:1px solid #e7eaee; border-radius:16px; }
-.thumb{ width:128px; height:96px; object-fit:cover; }
-.meta i{ opacity:.6; }
+.event-card {
+  border: 1px solid #e7eaee;
+  border-radius: 16px;
+  background: #fff;
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+.event-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+.event-card .thumb {
+  width: 160px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.event-card .actions .btn {
+  min-width: 110px;
+  font-weight: 500;
+}
 
 /* modal (simple) */
 .modal-backdrop{

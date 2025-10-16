@@ -7,73 +7,79 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
-const sgMail = require("@sendgrid/mail");
+/* ======== Cloud Functions (JS) ======== */
+const admin = require("firebase-admin");
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+// ✅ v2 全局配置从 v2/options 引入
+const {setGlobalOptions} = require("firebase-functions/v2/options");
+const {onDocumentWritten} = require("firebase-functions/v2/firestore");
+const {onValueWritten} = require("firebase-functions/v2/database");
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
-
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
-
-// 设置函数区域
-setGlobalOptions({ region: "australia-southeast1" });
-
-// 初始化 SendGrid
-sgMail.setApiKey(process.env.FIREBASE_CONFIG?.sendgrid?.key || process.env.SENDGRID_API_KEY || "");
-
-// 邮件发送函数
-exports.sendEventEmail = onRequest(async (req, res) => {
-  if (req.method !== "POST") {
-    return res.status(405).send("Method Not Allowed");
-  }
-
-  try {
-    const { to, userName, eventTitle, eventDate, eventLocation } = req.body;
-
-    if (!to || !eventTitle || !eventDate) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    const msg = {
-      to: to,
-      from: "tong.gao027@gmail.com", // 你已验证过的邮箱
-      subject: `注册成功：${eventTitle}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h2 style="color:#4CAF50;">🎉 注册成功！</h2>
-          <p>亲爱的 ${userName || "用户"}，</p>
-          <p>您已成功报名 <strong>${eventTitle}</strong>。</p>
-          <p>🕒 活动时间：${eventDate}</p>
-          <p>📍 活动地点：${eventLocation || "待定"}</p>
-          <p>感谢您的参与，我们期待见到您！</p>
-          <hr/>
-          <p style="font-size: 12px; color: #777;">此邮件由系统自动发送，请勿直接回复。</p>
-        </div>
-      `,
-    };
-
-    await sgMail.send(msg);
-    return res.status(200).json({ message: "Email sent successfully ✅" });
-  } catch (error) {
-    logger.error("SendGrid error", error);
-    const errMsg = error.response?.body?.errors?.[0]?.message || error.message;
-    return res.status(500).json({ error: errMsg });
-  }
+setGlobalOptions({
+  region: "us-central1",
+  maxInstances: 10,
 });
+
+admin.initializeApp();
+const db = admin.firestore();
+
+/**
+ * A) 监听 RTDB 报名变化 -> 统计人数 -> 回写 Firestore（registrations & remaining）
+ * 路径：/registrations/{eventId}/{uid}
+ */
+exports.syncRemainingOnRegChange = onValueWritten(
+    {ref: "registrations/{eventId}/{uid}"},
+    async (event) => {
+      const eventId = event.params.eventId;
+
+      // 1) 统计该活动所有报名数
+      const regsSnap = await admin
+          .database()
+          .ref(`registrations/${eventId}`)
+          .get();
+      const registrations = regsSnap.exists() ?
+      Object.keys(regsSnap.val()).length :
+      0;
+
+      // 2) 取 Firestore 里的 capacity
+      const evRef = db.collection("events").doc(eventId);
+      const evSnap = await evRef.get();
+      if (!evSnap.exists) {
+        console.log(`Event ${eventId} does not exist in Firestore.`);
+        return;
+      }
+      const {capacity = 0} = evSnap.data();
+
+      // 3) 计算剩余名额并写回
+      const remaining = Math.max(0, Number(capacity) - Number(registrations));
+      await evRef.update({registrations, remaining});
+
+      console.log(
+          `RTDB ${eventId}: reg=${registrations}, rem=${remaining}`,
+      );
+    },
+);
+
+/**
+ * B) （可选）保留 Firestore 文档写入触发器：当你在控制台/后台改了 capacity 等字段时，也能同步 remaining
+ */
+exports.updateRemainingSlots = onDocumentWritten(
+    {document: "events/{eventId}"},
+    async (event) => {
+      const eventId = event.params.eventId;
+
+      // after 可能为 null（删除），要判空
+      const afterSnap = event.data && event.data.after;
+      if (!afterSnap || !afterSnap.exists) {
+        console.log(`Event ${eventId} was deleted.`);
+        return;
+      }
+      const eventData = afterSnap.data() || {};
+      const capacity = Number(eventData.capacity || 0);
+      const registrations = Number(eventData.registrations || 0);
+      const remaining = Math.max(0, capacity - registrations);
+
+      await db.collection("events").doc(eventId).update({remaining});
+      console.log(`✅ [FS] ${eventId} -> remaining=${remaining}`);
+    },
+);

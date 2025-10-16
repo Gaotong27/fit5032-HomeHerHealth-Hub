@@ -7,7 +7,7 @@
         <h1 class="title">{{ event.title }}</h1>
 
         <div class="row g-4">
-          <!-- 左侧封面列 -->
+          <!-- Left Event Image -->
           <div class="col-lg-7">
             <img
               :src="event.imageUrl || getImageUrl(event.image)"
@@ -15,7 +15,7 @@
               class="hero-img rounded-3 shadow-sm"
             />
 
-            <!-- 管理员导出报名名单 -->
+            <!-- Administrator exports -->
             <div v-if="user && user.role === 'admin'" class="admin-export">
               <button class="btn btn-outline-dark btn-sm" @click="exportRegistrations" title="Export attendees (CSV)">
                 <i class="bi bi-download me-1"></i> Export attendees (CSV)
@@ -23,27 +23,27 @@
             </div>
           </div>
 
-          <!-- 右侧信息列 -->
+          <!-- Right Event Info -->
           <div class="col-lg-5">
             <div class="panel card shadow-sm">
-                <div class="card-body">
-
-                <!-- 状态 -->
+              <div class="card-body">
+                <!-- Status -->
                 <div class="d-flex align-items-center justify-content-between mb-3">
                   <span class="badge rounded-pill"
-                    :class="{
-                      'bg-success': status==='open',
-                      'bg-danger':  status==='full',
-                      'bg-secondary': status==='ended'
-                    }">
+                        :class="{
+                          'bg-success': status==='open',
+                          'bg-danger':  status==='full',
+                          'bg-secondary': status==='ended'
+                        }">
                     {{ statusText }}
                   </span>
-                  <span class="chip">{{ event.registrations }} / {{ event.capacity }}</span>
+                  <!-- Remaining -->
+                  <span class="chip">Remaining: {{ remaining }} / {{ event.capacity }}</span>
                 </div>
 
                 <div class="divider"></div>
 
-                <!-- 基本信息 -->
+                <!-- Event Info -->
                 <ul class="list-unstyled mb-3 key-info">
                   <li class="mb-2"><span class="key">Date: </span><span class="val">{{ event.date }}</span></li>
                   <li class="mb-2"><span class="key">Location: </span><span class="val">{{ event.location }}</span></li>
@@ -51,23 +51,23 @@
 
                 <div class="divider"></div>
 
-                <!-- 介绍 -->
+                <!--  Event Introduce -->
                 <h6 class="section-title">About this event</h6>
                 <p class="about mb-3" v-html="safeAboutHtml"></p>
-                <!-- 通用活动说明 -->
+
+                <!-- General Activity Description -->
                 <div class="generic-tip mt-2">
                   <i class="bi bi-info-circle me-1"></i>
                   This program opens <strong>periodically</strong>. Seats may be released in batches.
                   If it’s full, please check back later or watch for the next window.
-    
                 </div>
 
-                <!-- ✅ 注册按钮移到 About 后 -->
+                <!-- Registeration Button -->
                 <div v-if="user && user.role !== 'admin'" class="mb-3">
                   <button v-if="!alreadyRegistered"
-                    class="btn btn-success w-100"
-                    :disabled="status!=='open' || registering"
-                    @click="register">
+                          class="btn btn-success w-100"
+                          :disabled="status!=='open' || registering"
+                          @click="register">
                     {{ registering ? 'Registering…' : 'Register now' }}
                   </button>
                   <button v-else class="btn btn-danger w-100" @click="cancelOnDetail">
@@ -84,7 +84,7 @@
               </div>
             </div>
 
-            <!-- ✅ 管理员的评分摘要放在右侧面板下方 -->
+            <!-- Feedback (Admin can see) -->
             <div v-if="user && user.role === 'admin'" class="ratings-summary card p-4 shadow-sm mt-4">
               <h6 class="section-title mb-3">Ratings & Comments</h6>
               <div class="d-flex align-items-center gap-3">
@@ -102,12 +102,12 @@
           </div>
         </div>
 
-        <!-- ✅ 普通用户/访客的评论区块（放在页面底部） -->
+        <!-- Feedback (User and visitor can see) -->
         <div v-if="!user || user.role !== 'admin'" class="col-12 mt-5">
           <div class="ratings-section card p-4 shadow-sm">
             <h6 class="section-title mb-3">Ratings & Comments</h6>
 
-            <!-- 所有人都能看到的评论 -->
+            <!-- Comment -->
             <div v-if="raterRows.length">
               <div v-for="row in raterRows" :key="row.email" class="mb-3 border-bottom pb-2">
                 <div class="fw-bold">{{ row.name }}</div>
@@ -120,17 +120,17 @@
             </div>
             <div v-else class="text-muted small text-center">No ratings yet</div>
 
-            <!-- 登录用户输入区 -->
+            <!-- User enter comment -->
             <div v-if="user && user.role !== 'admin'" class="mt-4 border-top pt-3">
               <StarRating v-model="myRating" />
               <textarea v-model.trim="userComment"
-                class="form-control mt-2"
-                rows="2"
-                placeholder="Leave your comment (optional)">
+                        class="form-control mt-2"
+                        rows="2"
+                        placeholder="Leave your comment (optional)">
               </textarea>
               <button class="btn btn-success btn-sm mt-2"
-                :disabled="saving || !myRating"
-                @click="saveRating">
+                      :disabled="saving || !myRating"
+                      @click="saveRating">
                 {{ saving ? 'Saving…' : 'Submit' }}
               </button>
               <div class="small text-muted mt-2">
@@ -151,17 +151,26 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+/* -------------------- Imports -------------------- */
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { sanitizeHtml } from '@/utils/sanitize'
 import { useRoute } from 'vue-router'
 import { onAuthStateChanged } from 'firebase/auth'
 import { firebaseAuth } from '@/services/firebase'
 import { auth } from '@/services/auth'
-import { getFirestore, doc, getDoc } from 'firebase/firestore'
-import { getDatabase, ref as dbRef, set, onValue } from 'firebase/database'
-import StarRating from '@/components/StarRating.vue'
-import { get as rtdbGet } from 'firebase/database'
 
+/* Firestore */
+import { getFirestore, doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore'
+
+/* Realtime Database */
+import { getDatabase, ref as dbRef, set, get as rtdbGet, remove, onValue } from 'firebase/database'
+
+/* ✅ Cloud Functions（ SendGrid email） */
+import { getFunctions, httpsCallable } from 'firebase/functions'
+
+import StarRating from '@/components/StarRating.vue'
+
+/* -------------------- State -------------------- */
 const route = useRoute()
 const event = ref(null)
 const user = ref(null)
@@ -176,27 +185,55 @@ const alreadyRegistered = ref(false)
 
 const db = getFirestore()
 const rtdb = getDatabase()
+const fns = getFunctions(undefined, 'us-central1') 
+let unsubEventDoc = null 
 
+/* -------------------- Utils -------------------- */
 function getImageUrl(fileName){ return new URL(`../assets/events/${fileName}`, import.meta.url).href }
 function getUserKey(u){ return u?.email ? String(u.email).trim().toLowerCase() : null }
 
-/* --- 当前用户同步 --- */
+/* Current User */
 function syncUser(){
-  const u = auth.user
-  user.value = u ? { email:u.email, name:u.name||u.email.split('@')[0], role:u.role||'user' } : null
+  const fu = firebaseAuth.currentUser
+  const au = auth.user
+  const uid = fu?.uid || au?.uid
+  const email = fu?.email || au?.email
+  const displayName = fu?.displayName || au?.name || (email ? email.split('@')[0] : '')
+  const role = (au?.role || 'user')
+  user.value = (uid || email) ? { uid, email, name: displayName, role } : null
 }
 
-/* --- 加载活动详情 --- */
+/* Cloud Functions（remaining） */
 async function load(){
-  const ref = doc(db, 'events', route.params.slug)
+  const eventId = route.params.slug
+  const ref = doc(db, 'events', eventId)
+
   const snap = await getDoc(ref)
-  if (!snap.exists()){ event.value = null; return }
-  const data = snap.data()
-  event.value = { id: route.params.slug, ...data, registrations: data.bookedCount||0 }
-  listenToRatings(event.value.id)
+  if (!snap.exists()){ event.value = null } else {
+    const data = snap.data()
+    event.value = {
+      id: eventId,
+      ...data,
+      registrations: data.bookedCount ?? data.registrations ?? 0
+    }
+  }
+
+  if (unsubEventDoc) unsubEventDoc()
+  unsubEventDoc = onSnapshot(ref, (docSnap) => {
+    if (!docSnap.exists()) { event.value = null; return }
+    const d = docSnap.data()
+    event.value = {
+      id: eventId,
+      ...d,
+      registrations: d.bookedCount ?? d.registrations ?? 0
+    }
+  })
+
+  listenToRatings(eventId)
+  await loadAlreadyRegistered()
 }
 
-/* --- 实时监听评分 --- */
+/* Listen Rating */
 function listenToRatings(eventId){
   const ratingsRef = dbRef(rtdb, `ratings/${eventId}`)
   onValue(ratingsRef, (snap)=>{
@@ -219,7 +256,7 @@ function listenToRatings(eventId){
   })
 }
 
-/* --- 保存评分 --- */
+/* Save Rating */
 async function saveRating(){
   if(!event.value||!user.value||user.value.role==='admin')return
   const key=getUserKey(user.value); if(!key||!myRating.value)return
@@ -236,37 +273,106 @@ async function saveRating(){
   setTimeout(()=>flash.value=false,1200)
 }
 
-/* --- 状态与描述计算 --- */
-const status=computed(()=>{
-  if(!event.value)return'loading'
-  const today=new Date(),date=new Date(event.value.date)
-  if(date<today)return'ended'
-  if(event.value.registrations>=event.value.capacity)return'full'
-  return'open'
+/* === Cloud Functions （remaining） === */
+const remaining = computed(() => {
+  if (event.value?.remaining != null) return Number(event.value.remaining)
+  const cap  = Number(event.value?.capacity || 0)
+  const regs = Number(event.value?.registrations ?? event.value?.bookedCount ?? 0)
+  return Math.max(0, cap - regs)
 })
-const statusText=computed(()=>status.value==='open'?'Open':status.value==='full'?'Full':'Ended')
-const remaining=computed(()=>Math.max(0,(event.value?.capacity||0)-(event.value?.registrations||0)))
-const safeAboutHtml=computed(()=>sanitizeHtml(event.value?.description||'This workshop provides practical wellness tips.'))
-const starIcons=computed(()=>{
+
+const status = computed(()=>{
+  if(!event.value) return 'loading'
+  const today = new Date()
+  const date  = new Date(event.value.date)
+  if(date < today) return 'ended'
+  if(remaining.value <= 0) return 'full'
+  return 'open'
+})
+const statusText = computed(()=>status.value==='open'?'Open':status.value==='full'?'Full':'Ended')
+const safeAboutHtml = computed(()=>sanitizeHtml(event.value?.description || 'This workshop provides practical wellness tips.'))
+const starIcons = computed(()=>{
   const a=Math.max(0,Math.min(5,Number(summary.value.avg||0)));const res=[]
   for(let i=1;i<=5;i++){if(a>=i-0.25)res.push('bi-star-fill');else if(a>=i-0.75)res.push('bi-star-half');else res.push('bi-star')}
   return res
 })
 
-// 导出报名名单为 CSV（姓名、邮箱、性别、年龄）——管理员使用
+/* ===== Registration/cancellation: Write RTDB + write back to Firestore(total number of registrations) + trigger SendGrid email ===== */
+
+/* Count the RTDB registrations and write them back to Firestore to trigger the backend remaining calculation */
+async function syncCountToEvent(eventId) {
+  const snap = await rtdbGet(dbRef(rtdb, `registrations/${eventId}`))
+  const count = snap.exists() ? Object.keys(snap.val()).length : 0
+  await updateDoc(doc(db, 'events', eventId), { registrations: count })
+}
+
+/* Check if User have signed up */
+async function loadAlreadyRegistered() {
+  if (!user.value?.uid || !event.value?.id) { alreadyRegistered.value = false; return }
+  const ref = dbRef(rtdb, `registrations/${event.value.id}/${user.value.uid}`)
+  const snap = await rtdbGet(ref)
+  alreadyRegistered.value = snap.exists()
+}
+
+/* Cloud Functions（sent email */
+const notifyRegistration = httpsCallable(fns, 'notifyRegistration')  // action: 'register' | 'cancel'
+
+/* Register Event */
+async function register() {
+  if (!user.value?.uid || !event.value?.id) return
+  try {
+    registering.value = true
+    const { uid, email, name } = user.value
+    const payload = {
+      name: name || '',
+      email: email || '',
+      time: new Date().toISOString(),
+      registered: true
+    }
+    await set(dbRef(rtdb, `registrations/${event.value.id}/${uid}`), payload)
+    alreadyRegistered.value = true
+    await syncCountToEvent(event.value.id)   // 触发 remaining 函数
+
+    // Send email (registration)
+    await notifyRegistration({
+      action: 'register',
+      eventId: event.value.id,
+      eventTitle: event.value.title,
+      user: { uid, name, email }
+    })
+  } finally {
+    registering.value = false
+  }
+}
+
+/* Cancel Event */
+async function cancelOnDetail() {
+  if (!user.value?.uid || !event.value?.id) return
+  const { uid, email, name } = user.value
+  await remove(dbRef(rtdb, `registrations/${event.value.id}/${uid}`))
+  alreadyRegistered.value = false
+  await syncCountToEvent(event.value.id)     
+
+  // Send email (cancellation)
+  await notifyRegistration({
+    action: 'cancel',
+    eventId: event.value.id,
+    eventTitle: event.value.title,
+    user: { uid, name, email }
+  })
+}
+
+/* Admin export the registration list (name, email, gender, age) */
 async function exportRegistrations() {
   if (!event.value) return;
   const eventId = event.value.id;
   const eventTitle = String(event.value.title || eventId);
 
   try {
-    // 1) 读 RTDB: registrations/{eventId}
     const regSnap = await rtdbGet(dbRef(rtdb, `registrations/${eventId}`));
     const regs = regSnap.exists() ? regSnap.val() : {};
-
     const rows = [];
 
-    // 2) 汇总报名信息（报名节点优先，补齐 RTDB/Firestore 的 users）
     for (const [uid, r] of Object.entries(regs)) {
       let name   = r.name   || '';
       let email  = r.email  || '';
@@ -300,27 +406,16 @@ async function exportRegistrations() {
       rows.push({ name, email, gender, age });
     }
 
-    // 3) 生成 CSV（表头 5 列，第一列是活动标题）
     const header = ['Name', 'Email', 'Gender', 'Age'];
     const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-
     const lines = [
       header.join(','),
-      ...rows.map(r => [
-        eventTitle,          // ✅ CSV 里用原始标题，不要 encode
-        r.name,
-        r.email,
-        r.gender,
-        r.age
-      ].map(esc).join(','))
+      ...rows.map(r => [r.name, r.email, r.gender, r.age].map(esc).join(','))
     ];
 
-    // 文件名可以用安全版（但别用到 CSV 单元格里）
     const safeFileTitle = eventTitle.replace(/[^\w\d]+/g, '-').toLowerCase();
-
     const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement('a');
     a.href = url;
     a.download = `${safeFileTitle}-attendees.csv`;
@@ -334,10 +429,14 @@ async function exportRegistrations() {
   }
 }
 
+/* Lifecycle */
 onMounted(()=>{
-  onAuthStateChanged(firebaseAuth,()=>syncUser())
+  onAuthStateChanged(firebaseAuth, () => { syncUser(); loadAlreadyRegistered() })
   syncUser()
   load()
+})
+onBeforeUnmount(() => {
+  if (unsubEventDoc) unsubEventDoc()
 })
 </script>
 
@@ -351,26 +450,12 @@ onMounted(()=>{
 .chip{display:inline-block;background:#f1f3f4;color:#202124;padding:8px 12px;border-radius:999px;font-weight:700;}
 .divider{height:1px;background:#e7eaee;margin:12px 0;}
 .section-title{font-weight:800;font-size:14px;text-transform:uppercase;margin-bottom:6px;}
-.learn-list{margin-left:10px;color:#333;}
 .btn.w-100{border-radius:16px;font-weight:700;}
 .ratings-section{background:#fff;border-radius:20px;}
 .ratings-section .bi-star-fill{color:#f5b301;}
 .display-avg{font-size:38px;font-weight:800;color:#222;}
-.ratings-summary {
-  border-radius: 20px;
-  background: #fff;
-}
-
-.display-avg {
-  font-size: 38px;
-  font-weight: 800;
-  color: #222;
-}
-
-.ratings-summary .bi-star-fill {
-  color: #f5b301;
-}
-
+.ratings-summary { border-radius: 20px; background: #fff; }
+.ratings-summary .bi-star-fill { color: #f5b301; }
 .generic-tip {
   background: #f8fafc;
   border: 1px solid #e6ebf2;
@@ -380,8 +465,6 @@ onMounted(()=>{
   font-size: 0.95rem;
   line-height: 1.5;
 }
-
-.admin-export {
-  margin-top: 12px;
-}
+.admin-export { margin-top: 12px; }
+.chip{display:inline-block;background:#f1f3f4;color:#202124;padding:8px 12px;border-radius:999px;font-weight:700;}
 </style>
