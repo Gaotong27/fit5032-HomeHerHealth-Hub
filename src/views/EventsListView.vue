@@ -140,7 +140,7 @@ function startRealtimeEvents() {
       const dateObj = new Date(data.date)
       const today = new Date()
 
-      // Determine status
+      // Judgment event status
       let status = 'open'
       if (dateObj < today) status = 'ended'
       else if (registrations >= capacity) status = 'full'
@@ -183,7 +183,7 @@ onUnmounted(() => {
   if (unsubscribe) unsubscribe()
 })
 
-/* ------------------- Filtering, sorting and pagination ------------------- */
+/* ------------------- 过滤、排序、分页 ------------------- */
 const filtered = computed(() => {
   const term = q.value.toLowerCase()
   return raw.value.filter(e => {
