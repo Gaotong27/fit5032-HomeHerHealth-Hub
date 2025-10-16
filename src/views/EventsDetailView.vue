@@ -164,10 +164,6 @@ import { getFirestore, doc, getDoc, updateDoc, onSnapshot } from 'firebase/fires
 
 /* Realtime Database */
 import { getDatabase, ref as dbRef, set, get as rtdbGet, remove, onValue } from 'firebase/database'
-
-/* ✅ Cloud Functions（ SendGrid email） */
-import { getFunctions, httpsCallable } from 'firebase/functions'
-
 import StarRating from '@/components/StarRating.vue'
 
 /* -------------------- State -------------------- */
@@ -185,7 +181,7 @@ const alreadyRegistered = ref(false)
 
 const db = getFirestore()
 const rtdb = getDatabase()
-const fns = getFunctions(undefined, 'us-central1') 
+
 let unsubEventDoc = null 
 
 /* -------------------- Utils -------------------- */
@@ -203,13 +199,15 @@ function syncUser(){
   user.value = (uid || email) ? { uid, email, name: displayName, role } : null
 }
 
-/* Cloud Functions（remaining） */
+/* Load event & subscribe changes */
 async function load(){
   const eventId = route.params.slug
   const ref = doc(db, 'events', eventId)
 
   const snap = await getDoc(ref)
-  if (!snap.exists()){ event.value = null } else {
+  if (!snap.exists()){
+    event.value = null
+  } else {
     const data = snap.data()
     event.value = {
       id: eventId,
@@ -233,7 +231,7 @@ async function load(){
   await loadAlreadyRegistered()
 }
 
-/* Listen Rating */
+/* Listen Rating from RTDB */
 function listenToRatings(eventId){
   const ratingsRef = dbRef(rtdb, `ratings/${eventId}`)
   onValue(ratingsRef, (snap)=>{
@@ -273,7 +271,7 @@ async function saveRating(){
   setTimeout(()=>flash.value=false,1200)
 }
 
-/* === Cloud Functions （remaining） === */
+/* === Registrations/Count Sync（无 SendGrid） === */
 const remaining = computed(() => {
   if (event.value?.remaining != null) return Number(event.value.remaining)
   const cap  = Number(event.value?.capacity || 0)
@@ -289,6 +287,7 @@ const status = computed(()=>{
   if(remaining.value <= 0) return 'full'
   return 'open'
 })
+
 const statusText = computed(()=>status.value==='open'?'Open':status.value==='full'?'Full':'Ended')
 const safeAboutHtml = computed(()=>sanitizeHtml(event.value?.description || 'This workshop provides practical wellness tips.'))
 const starIcons = computed(()=>{
@@ -297,16 +296,14 @@ const starIcons = computed(()=>{
   return res
 })
 
-/* ===== Registration/cancellation: Write RTDB + write back to Firestore(total number of registrations) + trigger SendGrid email ===== */
-
-/* Count the RTDB registrations and write them back to Firestore to trigger the backend remaining calculation */
+/* Count RTDB registrations and write back to Firestore */
 async function syncCountToEvent(eventId) {
   const snap = await rtdbGet(dbRef(rtdb, `registrations/${eventId}`))
   const count = snap.exists() ? Object.keys(snap.val()).length : 0
   await updateDoc(doc(db, 'events', eventId), { registrations: count })
 }
 
-/* Check if User have signed up */
+/* Check if current user registered */
 async function loadAlreadyRegistered() {
   if (!user.value?.uid || !event.value?.id) { alreadyRegistered.value = false; return }
   const ref = dbRef(rtdb, `registrations/${event.value.id}/${user.value.uid}`)
@@ -314,10 +311,8 @@ async function loadAlreadyRegistered() {
   alreadyRegistered.value = snap.exists()
 }
 
-/* Cloud Functions（sent email */
-const notifyRegistration = httpsCallable(fns, 'notifyRegistration')  // action: 'register' | 'cancel'
 
-/* Register Event */
+/* Register Event (no email sending) */
 async function register() {
   if (!user.value?.uid || !event.value?.id) return
   try {
@@ -331,38 +326,22 @@ async function register() {
     }
     await set(dbRef(rtdb, `registrations/${event.value.id}/${uid}`), payload)
     alreadyRegistered.value = true
-    await syncCountToEvent(event.value.id)   // 触发 remaining 函数
-
-    // Send email (registration)
-    await notifyRegistration({
-      action: 'register',
-      eventId: event.value.id,
-      eventTitle: event.value.title,
-      user: { uid, name, email }
-    })
+    await syncCountToEvent(event.value.id)
   } finally {
     registering.value = false
   }
 }
 
-/* Cancel Event */
+/* Cancel Event (no email sending) */
 async function cancelOnDetail() {
   if (!user.value?.uid || !event.value?.id) return
   const { uid, email, name } = user.value
   await remove(dbRef(rtdb, `registrations/${event.value.id}/${uid}`))
   alreadyRegistered.value = false
-  await syncCountToEvent(event.value.id)     
-
-  // Send email (cancellation)
-  await notifyRegistration({
-    action: 'cancel',
-    eventId: event.value.id,
-    eventTitle: event.value.title,
-    user: { uid, name, email }
-  })
+  await syncCountToEvent(event.value.id)
 }
 
-/* Admin export the registration list (name, email, gender, age) */
+/* Admin export */
 async function exportRegistrations() {
   if (!event.value) return;
   const eventId = event.value.id;
