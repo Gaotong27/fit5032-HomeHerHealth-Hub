@@ -114,7 +114,7 @@
                 <div class="text-warning small">
                   <i v-for="n in row.value" :key="n" class="bi bi-star-fill"></i>
                 </div>
-                <div class="text-muted small">{{ new Date(row.updatedAt).toLocaleString() }}</div>
+                <div class="text-muted small">{{ row.updatedAt ? new Date(row.updatedAt).toLocaleString() : '' }}</div>
                 <p class="mb-0">{{ row.comment }}</p>
               </div>
             </div>
@@ -163,7 +163,7 @@ import { auth } from '@/services/auth'
 import { getFirestore, doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore'
 
 /* Realtime Database */
-import { getDatabase, ref as dbRef, set, get as rtdbGet, remove, onValue } from 'firebase/database'
+import { getDatabase, ref as dbRef, set, update, get as rtdbGet, remove, onValue, serverTimestamp } from 'firebase/database'
 import StarRating from '@/components/StarRating.vue'
 
 /* -------------------- State -------------------- */
@@ -186,8 +186,13 @@ let unsubEventDoc = null
 
 /* -------------------- Utils -------------------- */
 function getImageUrl(fileName){ return new URL(`../assets/events/${fileName}`, import.meta.url).href }
-function getUserKey(u){ return u?.email ? String(u.email).trim().toLowerCase() : null }
-
+function getUserKey(u){
+  if (u?.uid) return u.uid
+  if (u?.email) {
+    return String(u.email).trim().toLowerCase().replace(/[.#$\[\]@]/g, '_')
+  }
+  return null
+}
 /* Current User */
 function syncUser(){
   const fu = firebaseAuth.currentUser
@@ -257,18 +262,25 @@ function listenToRatings(eventId){
 /* Save Rating */
 async function saveRating(){
   if(!event.value||!user.value||user.value.role==='admin')return
-  const key=getUserKey(user.value); if(!key||!myRating.value)return
+  const uid=user.value.uid; if(!uid||!myRating.value)return
   saving.value=true
-  const ref=dbRef(rtdb,`ratings/${event.value.id}/${key}`)
-  await set(ref,{
-    value:myRating.value,
-    comment:userComment.value||'',
-    updatedAt:new Date().toISOString(),
-    name:user.value.name,
-    email:user.value.email
-  })
-  saving.value=false; flash.value=true
-  setTimeout(()=>flash.value=false,1200)
+  try {
+    const ref = dbRef(rtdb, `ratings/${event.value.id}/${uid}`)
+    await update(ref, {
+      value: Number(myRating.value),             
+      comment: (userComment.value || '').trim(), 
+      name: user.value.name || '',
+      email: user.value.email || '',
+      updatedAt: serverTimestamp(),              
+    })
+  } catch (e) {
+    console.error('saveRating failed:', e)
+    alert('Failed to submit rating. Please try again.')
+  } finally {
+    saving.value=false
+ }
+ flash.value=true
+ setTimeout(()=>flash.value=false,1200)
 }
 
 /* === Registrations/Count Sync（无 SendGrid） === */
