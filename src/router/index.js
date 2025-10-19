@@ -8,7 +8,8 @@ import UserProfileView from '@/views/UserProfileView.vue'
 import EventsListView from '@/views/EventsListView.vue'
 import EventDetailView from '@/views/EventsDetailView.vue'
 import AdminHomeView from '@/views/AdminHomeView.vue'
-import ClinicsView from '@/views/ClinicsView.vue'        // ← 新增
+import ClinicsView from '@/views/ClinicsView.vue'       
+import ResourceOfflineView from '@/views/ResourceOfflineView.vue' 
 
 import { auth } from '@/services/auth'
 
@@ -18,7 +19,7 @@ const routes = [
   { path: '/', name: 'home', component: HomeView },
 
   // Clinics Map
-  { path: '/clinics', name: 'clinics', component: ClinicsView }, // ← 新增
+  { path: '/clinics', name: 'clinics', component: ClinicsView }, 
 
   // Account entry point
   {
@@ -61,6 +62,14 @@ const routes = [
     component: AdminHomeView,
     meta: { requiresAuth: true, requiresAdmin: true },
   },
+
+  {
+    path: '/resources',
+    name: 'resources.offline',
+    component: ResourceOfflineView,
+    meta: { requiresAuth: false }
+  }
+
 ]
 
 const router = createRouter({

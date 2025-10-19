@@ -145,60 +145,151 @@
         </div>
       </div>
 
-      <!-- ===== Other panels (placeholders kept) ===== -->
+      <!-- ===== Resources panel (AG Grid like Events) ===== -->
       <div class="panel card shadow-sm mb-3" :class="{ open: activePanel==='resources' }">
         <button class="panel-head" @click="toggle('resources')">
           <div class="d-flex align-items-center gap-2">
             <i class="bi bi-journal-medical"></i>
             <span class="h6 mb-0">Resources</span>
-            <span class="badge rounded-pill bg-light text-dark ms-2">—</span>
+            <span class="badge rounded-pill bg-light text-dark ms-2">{{ resources.length }}</span>
           </div>
           <i class="bi" :class="activePanel==='resources' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
         </button>
-        <div class="panel-body">
-          <EmptyState title="Resource library" desc="Add articles, guides, and links for users." />
-        </div>
-      </div>
 
-      <div class="panel card shadow-sm mb-3" :class="{ open: activePanel==='clinics' }">
-        <button class="panel-head" @click="toggle('clinics')">
-          <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-hospital"></i>
-            <span class="h6 mb-0">Clinics</span>
-            <span class="badge rounded-pill bg-light text-dark ms-2">—</span>
+        <div class="panel-body">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <div class="d-flex gap-2 align-items-center">
+                  <select v-model="resStatus" class="form-select form-select-sm w-auto">
+                    <option value="">All statuses</option>
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                  <input v-model="qRes" class="form-control form-control-sm" placeholder="Quick search all..." style="width:220px" />
+                  <button class="btn btn-primary btn-sm" @click="openResCreate">+ Add New Resource</button>
+                </div>
+              </div>
+
+              <AgGridVue
+                class="ag-theme-quartz"
+                style="width: 100%; height: 520px"
+                :rowData="resources"
+                :columnDefs="resColDefs"
+                :defaultColDef="defaultColDef"
+                :quickFilterText="qRes"
+                :pagination="true"
+                :paginationPageSize="10"
+                :animateRows="true"
+                @grid-ready="onResGridReady"
+              />
+            </div>
           </div>
-          <i class="bi" :class="activePanel==='clinics' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
-        </button>
-        <div class="panel-body">
-          <EmptyState title="Clinics directory" desc="Manage clinic list, addresses, and contacts." />
         </div>
       </div>
 
-      <div class="panel card shadow-sm mb-3" :class="{ open: activePanel==='content' }">
-        <button class="panel-head" @click="toggle('content')">
-          <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-layout-text-sidebar"></i>
-            <span class="h6 mb-0">Content</span>
-            <span class="badge rounded-pill bg-light text-dark ms-2">—</span>
+      <!-- ===== Modal: create / edit resource ===== -->
+      <teleport to="body">
+        <div v-if="showResModal">
+          <div class="modal fade show d-block" tabindex="-1" style="z-index:1055">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+              <div class="modal-content border-0 rounded-4">
+                <div class="modal-header">
+                  <h5 class="modal-title">{{ resEditing ? 'Edit Resource' : 'Create Resource' }}</h5>
+                  <button type="button" class="btn-close" @click="closeResModal"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="row g-2">
+                    <div class="col-md-7">
+                      <label class="form-label small">Title</label>
+                      <input v-model.trim="resForm.title" class="form-control" />
+                    </div>
+                    <div class="col-md-5">
+                      <label class="form-label small">Status</label>
+                      <select v-model="resForm.status" class="form-select">
+                        <option value="published">published</option>
+                        <option value="draft">draft</option>
+                      </select>
+                    </div>
+
+                    <div class="col-md-12">
+                      <label class="form-label small">Tags (comma separated)</label>
+                      <input v-model.trim="resForm.tags" class="form-control" placeholder="women, health" />
+                    </div>
+
+                    <div class="col-md-12">
+                      <label class="form-label small">Upload file (.md / .txt / .json)</label>
+                      <input type="file" accept=".md,.txt,.json" class="form-control" @change="onResFileChange" />
+                      <small class="text-muted">Will be stored under Storage: <code>resources/</code></small>
+                      <div v-if="resForm.preview" class="mt-2 small text-muted" style="max-height:110px;overflow:auto;white-space:pre-wrap;border:1px solid #eee;border-radius:8px;padding:8px;">
+                        {{ resForm.preview }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button class="btn btn-light" @click="closeResModal">Cancel</button>
+                  <button class="btn btn-success" :disabled="resSaving" @click="saveResource">
+                    {{ resSaving ? 'Saving…' : (resEditing ? 'Save changes' : 'Create') }}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          <i class="bi" :class="activePanel==='content' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
-        </button>
-        <div class="panel-body">
-          <EmptyState title="Site content" desc="Configure homepage sections, banners, and pages." />
+          <div class="modal-backdrop fade show" style="z-index:1050"></div>
         </div>
-      </div>
+      </teleport>
 
+      <!-- ===== Reports panel (Firestore) ===== -->
       <div class="panel card shadow-sm" :class="{ open: activePanel==='reports' }">
         <button class="panel-head" @click="toggle('reports')">
           <div class="d-flex align-items-center gap-2">
             <i class="bi bi-graph-up"></i>
             <span class="h6 mb-0">Reports</span>
-            <span class="badge rounded-pill bg-light text-dark ms-2">—</span>
+            <span class="badge rounded-pill bg-light text-dark ms-2">{{ events.length }}</span>
           </div>
           <i class="bi" :class="activePanel==='reports' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
         </button>
+
         <div class="panel-body">
-          <EmptyState title="Analytics & reports" desc="Download CSVs or view trends once available." />
+          <div class="row g-3">
+            <!-- chart 1：Events Registrations vs Capacity -->
+            <div class="col-lg-7">
+              <div class="card h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong>Event Registrations vs Capacity</strong>
+                    <small class="text-muted">source: Firestore /events</small>
+                  </div>
+                  <div class="chart-box">
+                    <canvas ref="evtBarRef"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- chart 2：Ratings Distribution (1–5★) -->
+            <div class="col-lg-5">
+              <div class="card h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong>Ratings Distribution</strong>
+                    <small class="text-muted">source: Realtime DB /ratings</small>
+                  </div>
+                  <div class="chart-box">
+                    <canvas ref="ratingPieRef"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="small text-muted mt-3 d-flex flex-wrap gap-3">
+            <span><strong>Events:</strong> {{ events.length }}</span>
+            <span><strong>Total capacity:</strong> {{ totalCapacity }}</span>
+            <span><strong>Total registrations:</strong> {{ totalRegistrations }}</span>
+            <span><strong>Ratings count:</strong> {{ totalRatings }}</span>
+          </div>
         </div>
       </div>
 
@@ -278,15 +369,28 @@ import { useRoute, useRouter } from 'vue-router'
 import { AgGridVue } from 'ag-grid-vue3'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-quartz.css'
+import Chart from 'chart.js/auto'
 
 import {
-  getFirestore, collection, onSnapshot, doc, getDoc,
-  setDoc, updateDoc, deleteDoc, serverTimestamp, getDocs
+  getFirestore,
+  collection,
+  onSnapshot,
+  addDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  serverTimestamp,
 } from 'firebase/firestore'
 import { getDatabase, ref as dbRef, onValue, remove as dbRemove } from 'firebase/database'
 import { getStorage, ref as sref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { getAuth } from 'firebase/auth'                
 import { firebaseApp } from '@/services/firebase'
+
 
 /* ---------- Firebase handles ---------- */
 const db = getFirestore(firebaseApp)
@@ -298,12 +402,18 @@ const auth = getAuth(firebaseApp)
 const route = useRoute()
 const router = useRouter()
 
+
 /* ---------- panel state ---------- */
-const activePanel = ref('events')
+const PANELS = ['events','users','feedback','resources','clinics','content','reports','settings']
+const qPanel = String(route.query.panel || '').toLowerCase()
+const activePanel = ref(PANELS.includes(qPanel) ? qPanel : '')   
 
 function toggle(id){
   activePanel.value = activePanel.value === id ? '' : id
-  router.replace({ name: route.name, query: activePanel.value ? { panel: activePanel.value } : {} })
+  router.replace({
+    name: route.name,
+    query: activePanel.value ? { panel: activePanel.value } : {} 
+  })
 }
 
 /**
@@ -350,9 +460,8 @@ const eventColDefs = ref([
 ])
 
 function onEventGridReady(params){
-  eventGridApi.value = params.api
-  params.api.setQuickFilter(qTable.value)
-  applyStatusFilter(statusSelect.value)
+  resGridApi.value = params.api
+  applyResStatus(resStatus.value)
 }
 
 watch(qTable, v => eventGridApi.value?.setQuickFilter(v))
@@ -378,11 +487,6 @@ onMounted(()=>{
                date:ev.date, imageUrl:ev.imageUrl||'', capacity:cap, registrations:regs, status, _dateObj:dateObj }
     })
   })
-
-  const p = String(route.query.panel || '').toLowerCase()
-  if (['events','users','feedback','resources','clinics','content','reports','settings'].includes(p)) {
-    activePanel.value = p
-  }
 
   loadAllEvents().then(loadFeedbacks)
 })
@@ -575,6 +679,286 @@ const EmptyState = {
     <p class="text-muted mb-0">{{ desc }}</p>
   </div>`
 }
+
+/** 
+ * RESOURCES (AG Grid)
+ */
+const LS_KEY = 'hhh_offline_resources'
+
+const resources   = ref([])
+const qRes        = ref('')
+const resStatus   = ref('')
+const resGridApi  = ref(null)
+
+const resColDefs = ref([
+  { headerName:'Title',  field:'title',   minWidth:240 },
+  { headerName:'Status', field:'status',  width:120,
+    valueFormatter:p => (p.value||'').toString().toUpperCase()
+  },
+  { headerName:'Size',   field:'size',    width:110,
+    valueFormatter:p => p.value ? `${Math.round(p.value/1024)} KB` : ''
+  },
+  { headerName:'Updated',field:'updatedAt', minWidth:180,
+    comparator:(a,b)=> new Date(a) - new Date(b),
+    valueFormatter:p => p.value ? new Date(p.value).toLocaleString() : ''
+  },
+  { headerName:'Tags',   field:'tags',    minWidth:220,
+    valueFormatter:p => Array.isArray(p.value) ? p.value.join(', ') : ''
+  },
+  { headerName:'Action', width:260, filter:false, sortable:false,
+    cellRenderer:(params)=>{
+      const wrap=document.createElement('div'); wrap.style.display='flex'; wrap.style.gap='8px'
+      const v=document.createElement('button'); v.className='btn btn-success btn-sm'; v.textContent='Open'
+      v.addEventListener('click',()=>router.push({ path:'/resources', query:{ id: params.data.id }}))
+      const e=document.createElement('button'); e.className='btn btn-outline-secondary btn-sm'; e.textContent='Edit'
+      e.addEventListener('click',()=>openResEdit(params.data))
+      const d=document.createElement('button'); d.className='btn btn-outline-danger btn-sm'; d.textContent='Delete'
+      d.addEventListener('click',()=>removeResource(params.data))
+      wrap.append(v,e,d); return wrap
+    }
+  }
+])
+
+function onResGridReady(params){
+  resGridApi.value = params.api
+  params.api.setQuickFilter(qRes.value)
+  applyResStatus(resStatus.value)
+}
+watch(resStatus,    applyResStatus)
+
+function applyResStatus(val){
+  if(!resGridApi.value) return
+  if(!val) resGridApi.value.setFilterModel(null)
+  else     resGridApi.value.setFilterModel({ status:{ filterType:'text', type:'equals', filter: val } })
+}
+
+/* real-time loading Firestore /resources */
+onMounted(()=>{
+  onSnapshot(collection(db,'resources'), snap=>{
+    resources.value = snap.docs.map(d=>{
+      const r=d.data()
+      return {
+        id: d.id,
+        title: r.title || d.id,
+        status: r.status || 'published',
+        size: Number(r.size || 0),
+        tags: r.tags || [],
+        storagePath: r.storagePath || '',
+        updatedAt: r.updatedAt?.toDate ? r.updatedAt.toDate().toISOString() : (r.updatedAt || '')
+      }
+    })
+  })
+})
+
+/* ----- Modal & CRUD ----- */
+const showResModal = ref(false)
+const resEditing   = ref(false)
+const resSaving    = ref(false)
+const resFile      = ref(null)
+const resForm      = ref({ title:'', status:'published', tags:'', preview:'' })
+
+function onResFileChange(e){
+  const f = e.target.files?.[0] || null
+  resFile.value = f
+  resForm.value.preview = ''
+  if(!f) return
+  const reader = new FileReader()
+  reader.onload = ev => {
+    const text = (ev.target?.result || '').toString()
+    resForm.value.preview = text.split('\n').slice(0,30).join('\n')
+  }
+  reader.readAsText(f)
+}
+
+function openResCreate(){
+  resEditing.value=false
+  resFile.value=null
+  resForm.value={ title:'', status:'published', tags:'', preview:'' }
+  showResModal.value=true
+}
+function openResEdit(row){
+  resEditing.value=true
+  resFile.value=null
+  resForm.value={
+    id: row.id,
+    title: row.title,
+    status: row.status,
+    tags: (row.tags||[]).join(', '),
+    storagePath: row.storagePath,
+    preview:''
+  }
+  showResModal.value=true
+}
+function closeResModal(){ showResModal.value=false }
+
+/* Offline cache（LocalStorage） */
+function cacheToLocal(docId, title, text){
+  const map = JSON.parse(localStorage.getItem(LS_KEY) || '{}')
+  map[docId] = { id:docId, title, updatedAt: Date.now(), content: text.split('\n') }
+  localStorage.setItem(LS_KEY, JSON.stringify(map))
+}
+
+async function saveResource(){
+  if(!resForm.value.title){ alert('Please enter title'); return }
+  if(!resEditing.value && !resFile.value){ alert('Please choose a file'); return }
+
+  resSaving.value = true
+  try{
+    let storagePath = resForm.value.storagePath || ''
+    let size = 0
+
+    // prepare upload if new file selected
+    if(resFile.value){
+      const ext = (resFile.value.name.split('.').pop() || 'txt').toLowerCase()
+      const id  = resEditing.value ? resForm.value.id : crypto.randomUUID()
+      storagePath = `resources/${id}.${ext}`
+
+      // cratically cache to LocalStorage first
+      const text = await new Promise((resolve, reject)=>{
+        const reader = new FileReader()
+        reader.onload  = e => resolve((e.target?.result || '').toString())
+        reader.onerror = reject
+        reader.readAsText(resFile.value)
+      })
+      cacheToLocal(id, resForm.value.title, text)
+
+      // upload to Firebase Storage
+      const storeRef = sref(storage, storagePath)
+      const snap = await uploadBytes(storeRef, resFile.value, { contentType: resFile.value.type || 'text/plain' })
+      size = snap.metadata.size
+    }
+
+    const payload = {
+      title: resForm.value.title,
+      status: resForm.value.status,
+      tags: String(resForm.value.tags||'').split(',').map(s=>s.trim()).filter(Boolean),
+      storagePath,
+      size,
+      updatedAt: serverTimestamp()
+    }
+
+    if(resEditing.value){
+      await updateDoc(doc(db,'resources',resForm.value.id), payload)
+    }else{
+      await addDoc(collection(db,'resources'), { ...payload, createdAt: serverTimestamp() })
+    }
+
+    showResModal.value=false
+  }catch(e){
+    console.error(e)
+    alert(e?.message || 'Failed to save resource')
+  }finally{
+    resSaving.value=false
+  }
+}
+
+async function removeResource(row){
+  if(!confirm(`Delete resource "${row.title}"?`)) return
+  await deleteDoc(doc(db,'resources',row.id))
+  // cleanup local cache
+  const map = JSON.parse(localStorage.getItem(LS_KEY) || '{}')
+  if(map[row.id]){ delete map[row.id]; localStorage.setItem(LS_KEY, JSON.stringify(map)) }
+}
+
+// ===== Reports: refs & charts
+const evtBarRef = ref(null)
+const ratingPieRef = ref(null)
+let evtBarChart, ratingPieChart
+
+// Totals
+const totalCapacity = computed(()=> events.value.reduce((s,e)=> s + Number(e.capacity||0), 0))
+const totalRegistrations = computed(()=> events.value.reduce((s,e)=> s + Number(e.registrations||e.bookedCount||0), 0))
+
+// Ratings distribution
+const ratingBuckets = ref({1:0,2:0,3:0,4:0,5:0})
+const totalRatings = computed(()=> Object.values(ratingBuckets.value).reduce((a,b)=>a+b,0))
+
+// Firestore: listen /events
+watch(events, drawEventsChart, { deep:true })
+
+// RTDB: listen /ratings
+onMounted(() => {
+  const ratingsRef = dbRef(rtdb, 'ratings')
+  onValue(ratingsRef, (snap)=>{
+    const raw = snap.val() || {}
+    const buckets = {1:0,2:0,3:0,4:0,5:0}
+    // structure: ratings/{eventId}/{uid} => { value, comment?, updatedAt }
+    for (const evId in raw) {
+      const perEvent = raw[evId] || {}
+      for (const uid in perEvent) {
+        const v = Number(perEvent[uid]?.value || 0)
+        if (v >=1 && v <=5) buckets[v]++
+      }
+    }
+    ratingBuckets.value = buckets
+    drawRatingsChart()
+  })
+})
+
+// when panel active, draw charts
+watch(activePanel, (p)=> {
+  if (p === 'reports') {
+    drawEventsChart()
+    drawRatingsChart()
+  }
+})
+onMounted(()=> {
+  if (activePanel.value === 'reports') {
+    drawEventsChart()
+    drawRatingsChart()
+  }
+})
+
+// draw charts
+function drawEventsChart(){
+  if (!evtBarRef.value) return
+  const labels = events.value.map(e => e.title || e.slug || e.id)
+  const cap = events.value.map(e => Number(e.capacity || 0))
+  const regs = events.value.map(e => Number(e.registrations ?? e.bookedCount ?? 0))
+
+  // destroy old chart
+  if (evtBarChart) evtBarChart.destroy()
+
+  evtBarChart = new Chart(evtBarRef.value, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Capacity', data: cap },
+        { label: 'Registrations', data: regs }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: { x: { grid: { display: false } }, y: { beginAtZero: true } },
+      plugins: { legend: { position: 'bottom' }, tooltip: { enabled: true } }
+    }
+  })
+}
+
+function drawRatingsChart(){
+  if (!ratingPieRef.value) return
+  const labels = ['1★','2★','3★','4★','5★']
+  const data = labels.map((_,i)=> ratingBuckets.value[i+1] || 0)
+
+  if (ratingPieChart) ratingPieChart.destroy()
+
+  ratingPieChart = new Chart(ratingPieRef.value, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' }, tooltip: { enabled: true } }
+    }
+  })
+}
+
 </script>
 
 <style scoped>
@@ -615,5 +999,15 @@ const EmptyState = {
   border-radius:12px;
   border:1px solid #e7eaee;
   overflow:hidden;
+}
+
+.chart-box{
+  position: relative;
+  height: 260px;
+  width: 100%;
+}
+.chart-box > canvas{
+  width: 100% !important;
+  height: 100% !important;
 }
 </style>
