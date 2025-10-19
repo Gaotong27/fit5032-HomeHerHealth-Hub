@@ -44,7 +44,6 @@
           <div class="card shadow-sm">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                <h6 class="mb-0">Events (interactive table)</h6>
                 <div class="d-flex gap-2 align-items-center">
                   <select v-model="statusSelect" class="form-select form-select-sm w-auto">
                     <option value="">All statuses</option>
@@ -89,7 +88,6 @@
           <div class="card shadow-sm">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                <h6 class="mb-0">Users (interactive table)</h6>
                 <input v-model="qUsers" class="form-control form-control-sm" placeholder="Quick search all..." style="width:220px"/>
               </div>
 
