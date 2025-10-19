@@ -265,7 +265,7 @@ exports.sendEmailOnRegistrationCreated = onValueCreated(
       ref: "registrations/{eventId}/{uid}",
       secrets: [SENDGRID_API_KEY, FROM_EMAIL],
     },
-/**
+    /**
  * RTDB change handler (created)
  * Reads RTDB node → loads event → resolves recipient/name →
  * builds HTML → sends email via SendGrid.
@@ -287,7 +287,7 @@ exports.sendEmailOnRegistrationCreated = onValueCreated(
         }
         const node = (v && typeof v === "object") ? v : {};
 
-         // Load event details
+        // Load event details
         const evDoc = await getEventDoc(eventId);
         if (!evDoc) {
           logger.warn("Event not found for email send", {
