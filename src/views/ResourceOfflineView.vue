@@ -1,4 +1,3 @@
-<!-- src/views/ResourceOfflineView.vue -->
 <template>
   <section class="container py-4 resource-offline-page">
     <!-- === Network Status Bar === -->

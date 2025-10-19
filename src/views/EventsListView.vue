@@ -183,7 +183,7 @@ onUnmounted(() => {
   if (unsubscribe) unsubscribe()
 })
 
-/* ------------------- 过滤、排序、分页 ------------------- */
+/* ------------------- Filtering, sorting and pagination ------------------- */
 const filtered = computed(() => {
   const term = q.value.toLowerCase()
   return raw.value.filter(e => {
