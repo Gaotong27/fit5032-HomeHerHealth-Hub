@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-// 不需要逻辑，但必须保留 <script setup> 才能用 router-link
+// No script logic needed for this footer component
 </script>
 
 <style scoped>
