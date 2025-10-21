@@ -344,7 +344,7 @@ async function register() {
   }
 }
 
-/* Cancel Event */
+/* Cancel Event (no email sending) */
 async function cancelOnDetail() {
   if (!user.value?.uid || !event.value?.id) return
   const { uid, email, name } = user.value
