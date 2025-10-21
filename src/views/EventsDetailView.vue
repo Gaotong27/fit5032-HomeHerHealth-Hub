@@ -324,7 +324,7 @@ async function loadAlreadyRegistered() {
 }
 
 
-/* Register Event (no email sending) */
+/* Register Event */
 async function register() {
   if (!user.value?.uid || !event.value?.id) return
   try {
@@ -344,7 +344,7 @@ async function register() {
   }
 }
 
-/* Cancel Event (no email sending) */
+/* Cancel Event */
 async function cancelOnDetail() {
   if (!user.value?.uid || !event.value?.id) return
   const { uid, email, name } = user.value
