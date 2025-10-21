@@ -1,7 +1,6 @@
 <template>
   <div class="hhh-page">
     
-
     <!-- Hero Banner -->
     <section
       class="hhh-hero hhh-bleed d-flex align-items-center text-center text-white"
@@ -65,36 +64,6 @@
         </div>
       </div>
     </section>
-
-
-    <!-- Footer -->
-    <footer class="hhh-footer hhh-bleed text-white py-5 mt-5">
-      <div class="container-fluid px-3 px-md-5">
-        <div class="row g-4">
-          <div class="col-12 col-md-6 col-lg-4">
-            <h6 class="fw-semibold">About HomeHerHealth Hub</h6>
-            <p class="small opacity-90 mb-0">
-              We are committed to empowering women through knowledge, resources, and community support.
-              From preventative care to specialized guidance, we aim to help women live healthy, confident lives.
-            </p>
-          </div>
-          <div class="col-6 col-lg-4">
-            <h6 class="fw-semibold">Useful Links</h6>
-            <ul class="list-unstyled small">
-              <li><a href="#" class="link-light text-decoration-none">HOME</a></li>
-              <li><a href="#" class="link-light text-decoration-none">RESOURCES</a></li>
-              <li><a href="#" class="link-light text-decoration-none">EVENTS</a></li>
-            </ul>
-          </div>
-          <div class="col-6 col-lg-4">
-            <h6 class="fw-semibold">GET IN TOUCH</h6>
-            <p class="small mb-1">Head Office<br/>Monash Campus (Clayton), Melbourne, Australia</p>
-            <p class="small mb-1">Email<br/>tgao0019@student.monash.edu</p>
-            <p class="small mb-0">Phone<br/>+61 1234 567 89</p>
-          </div>
-        </div>
-      </div>
-    </footer>
   </div>
 </template>
 
@@ -172,36 +141,7 @@ const events = ref([
 </script>
 
 <style scoped>
-
 .hhh-page { font-family: 'Poppins', system-ui, -apple-system, Arial, sans-serif; }
-
-/* ------------ Navbar -------------- */
-.brand-text { font-weight: 700; }
-
-.hhh-nav-link {
-  position: relative;
-  font-weight: 500;
-  color: #2b2b2b;
-}
-.hhh-nav-link:hover { color: #377dff; }
-.hhh-nav-link:focus,
-.hhh-nav-link:active {
-  outline: none !important;
-  box-shadow: none !important;
-  text-decoration: none !important;
-  border: none !important;
-  color: #377dff !important;
-}
-.hhh-nav-link.active {
-  color: #377dff !important;
-  font-weight: 600;
-}
-.hhh-nav-link.active::after {
-  content: "";
-  position: absolute;
-  left: 0; right: 0; bottom: -6px;
-  height: 3px; background: #377dff; border-radius: 2px;
-}
 
 /* ------------ Full-bleed -------------- */
 .hhh-bleed {
@@ -255,45 +195,4 @@ const events = ref([
 
 /* Section */
 .hhh-section-title { letter-spacing:.3px; }
-
-/* ------------ Footer -------------- */
-/* Footer */
-.hhh-footer {
-  background: #212529;
-  font-family: 'Poppins', Arial, sans-serif;
-}
-
-/* subtitle（ Useful Links / Get in Touch） */
-.hhh-footer h6 {
-  font-weight: 700;
-  font-size: 1rem;
-  text-transform: uppercase;   
-  letter-spacing: 0.5px;
-  color: #ffffff;              
-  margin-bottom: 1rem;
-}
-
-/* body（Describe / contact information） */
-.hhh-footer p,
-.hhh-footer a,
-.hhh-footer li,
-.hhh-footer .small {
-  font-weight: 400;
-  font-size: 0.875rem;         
-  color: #cccccc;             
-  line-height: 1.6;
-  margin-bottom: 0.5rem;
-}
-
-.hhh-footer a {
-  text-decoration: none;
-}
-
-.hhh-footer a:hover {
-  color: #ffffff;              
-}
-
-
-/*  container-fluid */
-.container-fluid { max-width: 1600px; }
 </style>
