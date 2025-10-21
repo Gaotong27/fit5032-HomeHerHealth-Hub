@@ -87,7 +87,7 @@ async function logout() {
 }
 
 function goBack() {
-  router.replace({ name: 'home' }) // 或者 router.push('/')
+  router.replace({ name: 'home' })
 }
 </script>
 

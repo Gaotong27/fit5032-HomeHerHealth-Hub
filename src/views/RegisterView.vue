@@ -17,6 +17,8 @@
         <!-- right form -->
         <div class="right">
           <form @submit.prevent="onSubmit">
+            <!-- Register success -->
+            <div v-if="successMsg" class="banner-success">{{ successMsg }}</div>
             <div class="form-grid">
               <!-- Email -->
               <div class="field span-2">
@@ -157,7 +159,7 @@
             <div class="actions">
               <router-link class="btn btn-ghost" to="/login">Sign in</router-link>
               <button class="btn btn-primary" :disabled="submitting">
-                {{ submitting ? 'Creating…' : 'Comfirm' }}
+                {{ submitting ? 'Creating…' : 'Confirm' }}
               </button>
             </div>
           </form>
@@ -284,16 +286,22 @@ export default {
           reason: this.form.reason,
         });
 
-        // Auto-login after register
+        // registration success
+        this.successMsg = '✅ Registration successful! Redirecting...';
+
+        // wait 2s then redirect
         const email = this.form.email.trim().toLowerCase();
-        if (email === ADMIN_EMAIL) {
-          this.$router.replace({ name: 'admin' });
-        } else {
-          this.$router.replace({ name: 'profile' });
-        }
-      }catch(e){
+        setTimeout(() => {
+          if (email === ADMIN_EMAIL) {
+            this.$router.replace({ name: 'admin' });
+          } else {
+            this.$router.replace({ name: 'profile' });
+          }
+        }, 2000);
+
+      } catch (e) {
         this.errors.email = e?.message || 'Registration failed';
-      }finally{
+      } finally {
         this.submitting = false;
       }
     }
@@ -333,6 +341,7 @@ export default {
 
 .right{ padding:24px 8px; }
 
+/* Textarea character counter */
 .textarea-field { position: relative; }
 .char-counter{
   position: absolute;
@@ -418,5 +427,16 @@ export default {
 .actions{ margin-top:12px; gap:10px; }
 .btn{ padding:10px 18px; border-radius:20px; font-size:14px; }
 
+/* ===== Success banner ===== */
+.banner-success {
+  grid-column: 1 / -1;
+  background: #e6f4ea;
+  color: #0f5132;
+  border: 1px solid #b7eb8f;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
 </style>
 
