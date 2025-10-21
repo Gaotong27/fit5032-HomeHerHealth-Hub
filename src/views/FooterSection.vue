@@ -24,6 +24,9 @@
             <li>
               <router-link to="/events" class="link-light text-decoration-none">EVENTS</router-link>
             </li>
+            <li>
+              <router-link to="/clinics" class="link-light text-decoration-none">CLINICS MAP</router-link>
+            </li>
           </ul>
         </div>
 

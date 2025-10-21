@@ -55,7 +55,7 @@ async function logout() {
 </script>
 
 <template>
-  <!-- ✅ Navbar -->
+  <!-- Navbar -->
   <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
     <div class="container-fluid px-5">
       <!-- Logo -->
