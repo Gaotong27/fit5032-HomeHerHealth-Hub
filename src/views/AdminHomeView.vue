@@ -73,6 +73,72 @@
         </div>
       </div>
 
+      <!-- ===== Modal: create / edit event ===== -->
+      <teleport to="body">
+        <div v-if="showModal">
+          <div class="modal fade show d-block" tabindex="-1" style="z-index:1055">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+              <div class="modal-content border-0 rounded-4">
+                <div class="modal-header">
+                  <h5 class="modal-title">{{ editing ? 'Edit Event' : 'Create Event' }}</h5>
+                  <button type="button" class="btn-close" @click="closeModal"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label class="form-label small">Title</label>
+                      <input v-model.trim="form.title" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small">Slug (ID)</label>
+                      <input v-model.trim="form.slug" class="form-control" readonly />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small">Status</label>
+                      <select v-model="form.status" class="form-select">
+                        <option value="open">open</option>
+                        <option value="full">full</option>
+                        <option value="ended">ended</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small">Date</label>
+                      <input v-model="form.startAt" type="date" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small">Capacity</label>
+                      <input v-model.number="form.capacity" type="number" min="0" class="form-control" />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small">Location</label>
+                      <input v-model.trim="form.location" class="form-control" />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small">Upload image</label>
+                      <input type="file" accept="image/*" class="form-control" @change="onFileChange" />
+                      <div v-if="form.previewUrl" class="mt-2">
+                        <img :src="form.previewUrl" alt="preview" style="max-width:180px;border-radius:10px" />
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small">Description</label>
+                      <textarea v-model.trim="form.description" class="form-control" rows="4"></textarea>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button class="btn btn-light" @click="closeModal">Cancel</button>
+                  <button class="btn btn-success" :disabled="saving" @click="save">
+                    {{ saving ? 'Saving…' : (editing ? 'Save changes' : 'Create') }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-backdrop fade show" style="z-index:1050"></div>
+        </div>
+      </teleport>
+
       <!-- ===== Users panel (AG Grid) ===== -->
       <div class="panel card shadow-sm mb-3" :class="{ open: activePanel==='users' }">
         <button class="panel-head" @click="toggle('users')">
@@ -145,7 +211,7 @@
         </div>
       </div>
 
-      <!-- ===== Resources panel (AG Grid like Events) ===== -->
+      <!-- ===== Resources panel ===== -->
       <div class="panel card shadow-sm mb-3" :class="{ open: activePanel==='resources' }">
         <button class="panel-head" @click="toggle('resources')">
           <div class="d-flex align-items-center gap-2">
@@ -292,72 +358,6 @@
           </div>
         </div>
       </div>
-
-      <!-- ===== Modal: create / edit event ===== -->
-      <teleport to="body">
-        <div v-if="showModal">
-          <div class="modal fade show d-block" tabindex="-1" style="z-index:1055">
-            <div class="modal-dialog modal-lg modal-dialog-centered">
-              <div class="modal-content border-0 rounded-4">
-                <div class="modal-header">
-                  <h5 class="modal-title">{{ editing ? 'Edit Event' : 'Create Event' }}</h5>
-                  <button type="button" class="btn-close" @click="closeModal"></button>
-                </div>
-                <div class="modal-body">
-                  <div class="row g-2">
-                    <div class="col-12">
-                      <label class="form-label small">Title</label>
-                      <input v-model.trim="form.title" class="form-control" />
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label small">Slug (ID)</label>
-                      <input v-model.trim="form.slug" class="form-control" readonly />
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label small">Status</label>
-                      <select v-model="form.status" class="form-select">
-                        <option value="open">open</option>
-                        <option value="full">full</option>
-                        <option value="ended">ended</option>
-                      </select>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label small">Date</label>
-                      <input v-model="form.startAt" type="date" class="form-control" />
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label small">Capacity</label>
-                      <input v-model.number="form.capacity" type="number" min="0" class="form-control" />
-                    </div>
-                    <div class="col-12">
-                      <label class="form-label small">Location</label>
-                      <input v-model.trim="form.location" class="form-control" />
-                    </div>
-                    <div class="col-12">
-                      <label class="form-label small">Upload image</label>
-                      <input type="file" accept="image/*" class="form-control" @change="onFileChange" />
-                      <div v-if="form.previewUrl" class="mt-2">
-                        <img :src="form.previewUrl" alt="preview" style="max-width:180px;border-radius:10px" />
-                      </div>
-                    </div>
-                    <div class="col-12">
-                      <label class="form-label small">Description</label>
-                      <textarea v-model.trim="form.description" class="form-control" rows="4"></textarea>
-                    </div>
-                  </div>
-                </div>
-                <div class="modal-footer">
-                  <button class="btn btn-light" @click="closeModal">Cancel</button>
-                  <button class="btn btn-success" :disabled="saving" @click="save">
-                    {{ saving ? 'Saving…' : (editing ? 'Save changes' : 'Create') }}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="modal-backdrop fade show" style="z-index:1050"></div>
-        </div>
-      </teleport>
 
     </div>
   </section>
