@@ -107,7 +107,7 @@ const q = ref('')
 const statusFilter = ref('')
 const sortKey = ref('dateAsc')
 const page = ref(1)
-const pageSize = 6
+const pageSize = 3
 const placeholder = 'https://via.placeholder.com/300x180?text=No+Image'
 
 /* ------------------- Load image ------------------- */
@@ -240,9 +240,30 @@ const paged = computed(() => {
   font-weight:600;
   min-width:150px;
 }
-.event-card{
-  border:1px solid #e7eaee;
-  border-radius:16px;
+/* Default: Horizontal layout */
+.event-card {
+  border: 1px solid #e7eaee;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+
+/* small screen：Change to vertical stacking */
+@media (max-width: 768px) {
+  .event-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .thumb {
+    width: 100%;
+    height: auto;
+    max-height: 220px;
+  }
+  .flex-grow-1 {
+    width: 100%;
+  }
 }
 .thumb{
   width:180px;
@@ -276,4 +297,6 @@ const paged = computed(() => {
 @media (min-width: 768px){
   .toolbar.card-sub{ flex-wrap: nowrap; }
 }
+/* Make sure the title can be omitted */
+.min-w-0 { min-width: 0; }
 </style>
