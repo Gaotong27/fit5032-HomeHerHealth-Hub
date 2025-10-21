@@ -56,7 +56,7 @@
                 <p class="about mb-3" v-html="safeAboutHtml"></p>
 
                 <!-- General Activity Description -->
-                <div class="generic-tip mt-2">
+                <div class="generic-tip mt-2 mb-3">
                   <i class="bi bi-info-circle me-1"></i>
                   This program opens <strong>periodically</strong>. Seats may be released in batches.
                   If it’s full, please check back later or watch for the next window.
