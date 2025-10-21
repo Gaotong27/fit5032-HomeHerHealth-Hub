@@ -71,7 +71,6 @@
 import { ref } from 'vue'
 
 // import picture
-import logoPng from '../assets/logo/logo.png'
 import heroPng from '../assets/hero/home.png'
 import ev1Png from '../assets/events/HomeEvent1.png'
 import ev2Png from '../assets/events/HomeEvent2.png'
@@ -80,7 +79,6 @@ import ev4Png from '../assets/events/HomeEvent4.png'
 import ev5Png from '../assets/events/HomeEvent5.png'
 
 
-const logoUrl = logoPng
 const heroUrl = heroPng
 
 const categories = ref([

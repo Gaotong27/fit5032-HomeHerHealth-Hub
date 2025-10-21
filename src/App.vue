@@ -10,7 +10,6 @@ import NavbarSection from '@/views/NavbarSection.vue'
 import FooterSection from '@/views/FooterSection.vue'
 
 const router = useRouter()
-const logoUrl = new URL('./assets/logo.svg', import.meta.url).href
 
 const ADMIN_EMAIL = 'admin@homeherhealth.org'
 const user = ref(null)
