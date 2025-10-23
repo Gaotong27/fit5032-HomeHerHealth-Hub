@@ -8,7 +8,8 @@
           <h1 class="page-title">Admin Dashboard</h1>
           <div class="text-muted">Overview & management panels</div>
         </div>
-
+        <div v-show = "value == 0"</div>
+          
         <div class="stats d-flex gap-3">
           <div class="stat card shadow-sm">
             <div class="label">Total</div>
@@ -72,6 +73,7 @@
           </div>
         </div>
       </div>
+
 
       <!-- ===== Modal: create / edit event ===== -->
       <teleport to="body">

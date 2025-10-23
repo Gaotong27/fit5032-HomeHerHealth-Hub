@@ -138,6 +138,7 @@
               </div>
               <div v-if="flash" class="text-success small mt-1">Thanks for your feedback!</div>
             </div>
+            
           </div>
         </div>
       </div>
